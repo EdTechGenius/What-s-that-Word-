@@ -1007,19 +1007,40 @@
 
   // ================================================================ LEVEL UP
   const LU_SAMPLES = [
-    { title: 'At the park', text: 'It was a nice day so we went to the park. The big dog ran fast and I was very happy.' },
-    { title: 'The spooky house', text: '"Who is there?" said Sam. He walked into the dark house. It was very cold and he was scared. Then he saw a strange thing on the floor.' },
-    { title: 'Lunch time', text: 'I was very hungry so I ate my sandwich quickly. It was really good. Then I got a small cake and we had fun.' },
+    { title: 'At the park', text: 'It was a nice day so we went to the park. The big dog ran fast. I was very happy.' },
+    { title: 'The spooky house', text: '"Who is there?" said Sam. He walked into the dark house. It was very cold. He was scared. Then he saw a strange thing on the floor.' },
+    { title: 'Lunch time', text: 'I was very hungry. I ate my sandwich quickly. It was really good. Then I got a small cake and we had fun.' },
   ];
   const LU_TIER = {
     lower: ['⭐ Try one of these', ''],
-    ambitious: ['✨ Ambitious words', 'great for upgrading your writing'],
-    challenge: ['🚀 Challenge words', 'rare and impressive'],
+    ambitious: ['✨ Ambitious', 'great for upgrading your writing'],
+    challenge: ['🚀 Challenge', 'rare and impressive'],
+  };
+  const LU_MODES = {
+    swap: {
+      label: '🔁 Swap words',
+      tip: { lower: 'Tap an underlined plain word and swap it for a more exciting one.', upper: 'Tap an underlined plain word and swap it for an ambitious or challenge word. Phrases like “very big” become one powerful word.' },
+    },
+    adverb: {
+      label: '➕ Add adverbs',
+      tip: { lower: 'An <strong>adverb</strong> tells us HOW something happens, like <em>quickly</em> or <em>quietly</em>. Tap a ＋ to add one next to a verb.', upper: 'An <strong>adverb</strong> shows exactly HOW an action happens. Choose one that fits the mood, but don’t overdo it: one adverb in a sentence is usually plenty! Tap a ＋ to add one.' },
+    },
+    opener: {
+      label: '🎬 Sentence openers',
+      tip: { lower: 'A <strong>sentence opener</strong> tells us WHEN, WHERE or HOW something happened. Tap a ＋ at the start of a sentence. Don’t forget the comma!', upper: 'A <strong>fronted adverbial</strong> is a word or phrase at the start of a sentence that tells us when, where or how. It is followed by a comma. Using different openers makes your writing flow. Tap a ＋ to add one.' },
+    },
+    conj: {
+      label: '🔗 Conjunctions',
+      tip: { lower: '<strong>Conjunctions</strong> are joining words like <em>and</em>, <em>but</em>, <em>so</em> and <em>because</em>. Tap a ＋ to join two sentences or to add more to a sentence.', upper: '<strong>Coordinating conjunctions</strong> (FANBOYS) join two equal clauses. <strong>Subordinating conjunctions</strong> (because, although, while…) add a subordinate clause with extra information. Tap a ＋ to join sentences or extend one.' },
+    },
   };
   const lu = {
     text: store.get('lutext', ''),
     analysis: null,
     units: [],
+    adds: { adverb: {}, opener: {}, conj: {} },
+    slots: { adverb: {}, opener: {}, conj: {} },
+    mode: 'swap',
     editing: true,
   };
 
@@ -1054,11 +1075,9 @@
   function renderLevelUpInput(level) {
     app.innerHTML = `
       ${luHead(level)}
-      <p class="lead">${level === 'upper'
-        ? 'Type or paste your writing. Plain words will be underlined, so you can swap them for <strong>✨ ambitious</strong> or <strong>🚀 challenge</strong> words. Phrases like “very big” become one powerful word, and sentences starting with “Then” get a fronted adverbial.'
-        : 'Type or paste your writing. Plain words like <em>said</em>, <em>nice</em>, <em>went</em> and <em>big</em> will be underlined, so you can swap them for more exciting words!'}</p>
+      <p class="lead">Type or paste your writing, then level it up in four ways: <strong>swap plain words</strong>, <strong>add adverbs</strong>, <strong>add sentence openers</strong> and <strong>join sentences with conjunctions</strong>.${level === 'upper' ? ' You’ll get ✨ ambitious and 🚀 challenge choices.' : ''}</p>
       <div class="card input-card">
-        <textarea id="lu-in" placeholder="Type or paste your sentence here…" spellcheck="true">${esc(lu.text)}</textarea>
+        <textarea id="lu-in" placeholder="Type or paste your writing here…" spellcheck="true">${esc(lu.text)}</textarea>
         <div class="input-actions">
           <button class="btn primary" id="lu-go">⚡ Level up my writing</button>
           <button class="btn ghost" id="lu-clear">Clear</button>
@@ -1090,6 +1109,12 @@
     store.set('lutext', text);
     lu.analysis = window.Grammar.analyse(text);
     lu.units = window.LevelUp.findUnits(lu.analysis).map((u) => Object.assign(u, { chosen: null, tier: null }));
+    lu.adds = { adverb: {}, opener: {}, conj: {} };
+    lu.slots = {
+      adverb: window.LevelUp.adverbSlots(lu.analysis),
+      opener: window.LevelUp.openerSlots(lu.analysis),
+      conj: window.LevelUp.conjunctionSlots(lu.analysis),
+    };
   }
 
   // the text of a unit as the pupil wrote it ("very big")
@@ -1099,22 +1124,47 @@
   }
   function unitAt() {
     const map = new Map();
-    lu.units.forEach((u) => u.ids.forEach((id, k) => map.set(id, { u, first: k === 0, last: k === u.ids.length - 1 })));
+    lu.units.forEach((u) => u.ids.forEach((id, k) => map.set(id, { u, first: k === 0 })));
     return map;
+  }
+  const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+  const upperFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // Is a sentence joined onto the one before it?
+  function joinedInto(s) {
+    return Object.keys(lu.adds.conj).some((k) => lu.adds.conj[k].kind === 'join' && lu.slots.conj[k] && lu.slots.conj[k].next === s);
   }
 
   /**
-   * Build the levelled-up text. mode: 'html' (tappable words), 'after' (swaps highlighted), 'plain'.
+   * Build the levelled-up writing.
+   * mode: 'html' (tappable, for the current way), 'after' (changes highlighted), 'plain' (text only).
    */
   function buildLevelUp(mode) {
     const tokens = lu.analysis.tokens;
     const at = unitAt();
-    const out = [];
-    let para = -1;
+    const html = mode !== 'plain';
+    const e = (s) => (html ? esc(s) : s);
+    const firstOf = {};
+    const lastOf = {};
+    tokens.forEach((t, i) => {
+      if (!/[a-z0-9]/i.test(t.text)) return;
+      if (firstOf[t.sentence] == null) firstOf[t.sentence] = i;
+      lastOf[t.sentence] = i;
+    });
+    const added = (kind, key, text, tier) => {
+      if (mode === 'plain') return text;
+      if (mode === 'after') return `<mark class="add">${esc(text)}</mark>`;
+      return `<button class="lu-added add-${kind} tier-${tier || 'lower'}" data-add="${kind}:${key}">${esc(text)}</button>`;
+    };
+    const plus = (kind, key, label) => `<button class="lu-plus plus-${kind}" data-slot="${kind}:${key}" aria-label="${esc(label)}">＋</button>`;
     const paraOf = new Map();
     lu.analysis.paragraphs.forEach((p, pi) => p.tokens.forEach((t) => paraOf.set(t.id, pi)));
+
+    const out = [];
+    let para = -1;
     for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i];
+      const s = t.sentence;
       const p = paraOf.get(t.id);
       if (p !== para) {
         if (para !== -1) out.push(mode === 'plain' ? '\n' : '</p><p>');
@@ -1122,114 +1172,190 @@
       }
       const hit = at.get(i);
       if (hit && !hit.first) continue;
+
+      // ---- the word itself (a swap unit or a single token)
+      let pre = t.pre;
+      let post = t.post;
+      let core;
+      const startI = i;
+      const isFirstWord = i === firstOf[s];
+      const opener = lu.adds.opener[s] && !joinedInto(s) ? lu.adds.opener[s] : null;
+      const lower = isFirstWord && (opener || joinedInto(s)) && t.text !== 'I' && !/^I[’']/.test(t.text) && t.cls !== 'propernoun';
       if (hit) {
         const u = hit.u;
         const last = tokens[u.ids[u.ids.length - 1]];
+        post = last.post;
         let shown = u.chosen || unitOriginal(u);
-        let post = last.post;
-        // fronted adverbials need a comma after them
+        if (lower) shown = lowerFirst(shown);
         if (u.chosen && u.kind === 'fronted' && !/^\s*,/.test(post)) post = ',' + post;
-        if (mode === 'plain') { out.push(t.pre + shown + post); continue; }
-        const cls = u.chosen ? `swapped tier-${u.tier}` : 'plain';
-        if (mode === 'after') {
-          out.push(esc(t.pre) + (u.chosen ? `<mark class="swap">${esc(shown)}</mark>` : esc(shown)) + esc(post));
-        } else {
-          out.push(`${esc(t.pre)}<button class="lu-word ${cls}" data-unit="${lu.units.indexOf(u)}" aria-label="${esc(shown)}${u.chosen ? ', levelled up' : ', plain word – tap to level up'}">${esc(shown)}</button>${esc(post)}`);
-        }
-        shown = null;
-        continue;
-      }
-      // a / an before a swapped word
-      let text = t.text;
-      const nextHit = at.get(i + 1);
-      if (/^an?$/i.test(text) && nextHit && nextHit.first && nextHit.u.chosen) {
-        const an = /^[aeiou]/i.test(nextHit.u.chosen) && !/^(uni|use|eu|one)/i.test(nextHit.u.chosen);
-        text = (/^A/.test(text) ? 'A' : 'a') + (an ? 'n' : '');
-      }
-      if (mode === 'plain') { out.push(t.pre + text + t.post); continue; }
-      if (mode === 'html' && ['noun', 'verb', 'adjective', 'adverb'].includes(t.cls) && /[a-z]/i.test(text)) {
-        out.push(`${esc(t.pre)}<button class="lu-word other" data-tok="${i}">${esc(text)}</button>${esc(t.post)}`);
+        if (mode === 'plain') core = shown;
+        else if (mode === 'after') core = u.chosen ? `<mark class="swap">${esc(shown)}</mark>` : esc(shown);
+        else if (u.chosen) core = `<button class="lu-word swapped tier-${u.tier}" data-unit="${lu.units.indexOf(u)}">${esc(shown)}</button>`;
+        else if (lu.mode === 'swap') core = `<button class="lu-word plain" data-unit="${lu.units.indexOf(u)}" aria-label="${esc(shown)}, plain word – tap to level up">${esc(shown)}</button>`;
+        else core = esc(shown);
+        i = u.ids[u.ids.length - 1];
       } else {
-        out.push(esc(t.pre + text + t.post));
+        let text = t.text;
+        if (lower) text = lowerFirst(text);
+        const nextHit = at.get(i + 1);
+        if (/^an?$/i.test(text) && nextHit && nextHit.first && nextHit.u.chosen) {
+          const an = /^[aeiou]/i.test(nextHit.u.chosen) && !/^(uni|use|eu|one)/i.test(nextHit.u.chosen);
+          text = (/^A/.test(text) ? 'A' : 'a') + (an ? 'n' : '');
+        }
+        if (mode === 'html' && lu.mode === 'swap' && ['noun', 'verb', 'adjective', 'adverb'].includes(t.cls) && /[a-z]/i.test(text)) {
+          core = `<button class="lu-word other" data-tok="${i}">${esc(text)}</button>`;
+        } else core = e(text);
       }
+      const endI = i;   // last token covered by this word
+
+      // ---- sentence opener (before the first word)
+      let before = '';
+      if (isFirstWord && !joinedInto(s)) {
+        if (opener) before = added('opener', s, opener.text, opener.tier) + e(', ');
+        else if (mode === 'html' && lu.mode === 'opener' && lu.slots.opener[s] != null) before = plus('opener', s, 'Add a sentence opener');
+      }
+      // ---- adverb before/after a verb
+      const advSlot = lu.slots.adverb[s];
+      const adv = lu.adds.adverb[s];
+      let advBefore = '';
+      let advAfter = '';
+      if (advSlot && advSlot.at >= startI && advSlot.at <= endI) {
+        if (adv) {
+          if (advSlot.pos === 'before') advBefore = added('adverb', s, adv.word, adv.tier) + e(' ');
+          else advAfter = e(' ') + added('adverb', s, adv.word, adv.tier);
+        } else if (mode === 'html' && lu.mode === 'adverb') {
+          if (advSlot.pos === 'before') advBefore = plus('adverb', s, 'Add an adverb') + ' ';
+          else advAfter = ' ' + plus('adverb', s, 'Add an adverb');
+        }
+      }
+      // ---- conjunction at the end of a sentence
+      let conjHtml = '';
+      const cSlot = lu.slots.conj[s];
+      if (cSlot && cSlot.last === endI) {
+        const c = lu.adds.conj[s];
+        if (c) {
+          const comma = window.LevelUp.COMMA_BEFORE.includes(c.conj) ? ',' : '';
+          if (c.kind === 'join') {
+            post = post.replace(/^\.\s*/, '');
+            conjHtml = e(comma + ' ') + added('conj', s, c.conj, c.tier) + e(' ');
+          } else {
+            conjHtml = e(comma + ' ') + added('conj', s, `${c.conj} ${c.clause}`, c.tier);
+          }
+        } else if (mode === 'html' && lu.mode === 'conj') {
+          conjHtml = ' ' + plus('conj', s, 'Add a conjunction');
+        }
+      }
+      out.push(e(pre) + before + advBefore + core + advAfter + conjHtml + e(post));
     }
-    return mode === 'plain' ? out.join('').trim() : '<p>' + out.join('') + '</p>';
+    const joined = out.join('');
+    return mode === 'plain' ? joined.replace(/[ \t]+\n/g, '\n').trim() : '<p>' + joined + '</p>';
+  }
+
+  function luCounts() {
+    const plain = lu.units.filter((u) => !u.extra);
+    return {
+      plain,
+      swaps: lu.units.filter((u) => u.chosen).length,
+      levelled: plain.filter((u) => u.chosen).length,
+      adverb: Object.keys(lu.adds.adverb).length,
+      opener: Object.keys(lu.adds.opener).filter((s) => !joinedInto(+s)).length,
+      conj: Object.keys(lu.adds.conj).length,
+      tiers: [].concat(lu.units.filter((u) => u.chosen).map((u) => u.tier),
+        ...['adverb', 'opener', 'conj'].map((k) => Object.values(lu.adds[k]).map((a) => a.tier))),
+    };
   }
 
   function renderLevelUpResult(level) {
-    const plain = lu.units.filter((u) => !u.extra);
-    const done = lu.units.filter((u) => u.chosen);
-    const challenge = done.filter((u) => u.tier === 'challenge').length;
-    const ambitious = done.filter((u) => u.tier === 'ambitious').length;
-    const levelled = plain.filter((u) => u.chosen).length;
-    let summary;
-    if (!plain.length) {
-      summary = '🌟 We didn’t spot any plain words. Great writing! You can still tap any word to look for an upgrade.';
-    } else {
-      const stars = plain.map((u) => (u.chosen ? '⭐' : '☆')).join('');
-      summary = `<span class="stars" aria-hidden="true">${stars}</span> We found <strong>${plain.length}</strong> plain word${plain.length === 1 ? '' : 's'}. You’ve levelled up <strong>${levelled}</strong>!` +
-        (levelled === plain.length ? ' 🎉 Every plain word has been upgraded!' : '');
-    }
-    const after = done.length ? buildLevelUp('after') : '';
+    const c = luCounts();
+    const changes = c.swaps + c.adverb + c.opener + c.conj;
+    const challenge = c.tiers.filter((x) => x === 'challenge').length;
+    const ambitious = c.tiers.filter((x) => x === 'ambitious').length;
+    const slotCount = {
+      swap: c.plain.length,
+      adverb: Object.keys(lu.slots.adverb).length,
+      opener: Object.keys(lu.slots.opener).length,
+      conj: Object.keys(lu.slots.conj).length,
+    };
+    const doneCount = { swap: c.levelled, adverb: c.adverb, opener: c.opener, conj: c.conj };
+    const stars = c.plain.length ? c.plain.map((u) => (u.chosen ? '⭐' : '☆')).join('') : '';
+
     app.innerHTML = `
       ${luHead(level)}
       <div class="toolbar" role="toolbar" aria-label="Level up tools">
         <button class="btn small" id="lu-edit">✏️ Change writing</button>
         <span class="spacer"></span>
         <button class="btn small ghost" id="lu-hear">🔊 Read aloud</button>
-        <button class="btn small ghost" id="lu-undo" ${done.length ? '' : 'disabled'}>↩️ Undo all</button>
+        <button class="btn small ghost" id="lu-undo" ${changes ? '' : 'disabled'}>↩️ Undo all</button>
       </div>
-      <div class="lu-summary">${summary}
-        ${level === 'upper' && done.length ? `<div class="small" style="margin-top:6px">🚀 ${challenge} challenge word${challenge === 1 ? '' : 's'} · ✨ ${ambitious} ambitious word${ambitious === 1 ? '' : 's'}</div>` : ''}
+      <div class="lu-modes" role="tablist" aria-label="Ways to level up">
+        ${Object.keys(LU_MODES).map((m) => `<button role="tab" aria-selected="${lu.mode === m}" data-mode="${m}">${LU_MODES[m].label}
+          <span class="lu-count">${doneCount[m]}${slotCount[m] ? '/' + slotCount[m] : ''}</span></button>`).join('')}
       </div>
-      <p class="legend-hint" style="margin:12px 0">
-        <span class="lu-key plain">plain word</span> Tap an underlined word to level it up.
-        <span class="lu-key swapped">levelled up</span> Tap any other word to search for an upgrade.
-      </p>
-      <article class="reading lu-reading" id="lu-reading" lang="en">${buildLevelUp('html')}</article>
-      ${done.length ? `
+      <p class="lu-tip">💡 ${LU_MODES[lu.mode].tip[level]}</p>
+      <div class="lu-summary">
+        ${lu.mode === 'swap' ? (c.plain.length
+          ? `<span class="stars" aria-hidden="true">${stars}</span> We found <strong>${c.plain.length}</strong> plain word${c.plain.length === 1 ? '' : 's'}. You’ve levelled up <strong>${c.levelled}</strong>!${c.levelled === c.plain.length ? ' 🎉' : ''}`
+          : '🌟 No plain words found. Great writing! You can still tap any word to look for an upgrade.')
+          : slotCount[lu.mode] ? `Tap a <span class="lu-plus-demo">＋</span> to add ${{ adverb: 'an adverb', opener: 'a sentence opener', conj: 'a conjunction' }[lu.mode]}. ${doneCount[lu.mode] ? `You’ve added <strong>${doneCount[lu.mode]}</strong> so far!` : ''}`
+            : `There’s nowhere obvious to add ${{ adverb: 'an adverb', opener: 'a sentence opener', conj: 'a conjunction' }[lu.mode]} in this writing. Try another way to level up!`}
+        ${changes ? `<div class="lu-tally">🔁 ${c.swaps} swapped · ➕ ${c.adverb} adverb${c.adverb === 1 ? '' : 's'} · 🎬 ${c.opener} opener${c.opener === 1 ? '' : 's'} · 🔗 ${c.conj} conjunction${c.conj === 1 ? '' : 's'}${level === 'upper' ? ` <span class="muted">· 🚀 ${challenge} challenge · ✨ ${ambitious} ambitious</span>` : ''}</div>` : ''}
+      </div>
+      <article class="reading lu-reading mode-${lu.mode}" id="lu-reading" lang="en">${buildLevelUp('html')}</article>
+      ${changes ? `
         <section class="card lu-compare">
           <div class="lu-before"><h3>Before</h3>${lu.analysis.paragraphs.filter((p) => !p.blank).map((p) => `<p>${esc(p.tokens.map((t) => t.pre + t.text + t.post).join(''))}</p>`).join('')}</div>
-          <div class="lu-after"><h3>⚡ After</h3>${after}</div>
+          <div class="lu-after"><h3>⚡ After</h3>${buildLevelUp('after')}</div>
           <div class="input-actions">
             <button class="btn" id="lu-hear-new">🔊 Hear my new writing</button>
             <button class="btn" id="lu-copy">📋 Copy</button>
-            <button class="btn primary" id="lu-save">⭐ Save new words to my word bank</button>
+            <button class="btn primary" id="lu-save" ${c.swaps ? '' : 'disabled'}>⭐ Save new words to my word bank</button>
           </div>
         </section>` : ''}`;
 
     $('#lu-edit').onclick = () => { lu.editing = true; renderLevelUp(); $('#lu-in').focus(); };
     $('#lu-hear').onclick = () => speak(buildLevelUp('plain'));
     $('#lu-undo').onclick = () => {
+      if (!confirm('Undo all your changes?')) return;
       lu.units = lu.units.filter((u) => !u.extra);
       lu.units.forEach((u) => { u.chosen = null; u.tier = null; });
+      lu.adds = { adverb: {}, opener: {}, conj: {} };
       renderLevelUp();
     };
+    $$('[data-mode]').forEach((b) => { b.onclick = () => { lu.mode = b.dataset.mode; renderLevelUp(); }; });
     $('#lu-reading').addEventListener('click', (ev) => {
-      const b = ev.target.closest('.lu-word');
+      const b = ev.target.closest('button');
       if (!b) return;
       if (b.dataset.unit != null) openLevelUpPicker(lu.units[+b.dataset.unit], level);
-      else openApiPicker(+b.dataset.tok, level);
+      else if (b.dataset.tok != null) openApiPicker(+b.dataset.tok, level);
+      else if (b.dataset.slot || b.dataset.add) {
+        const [kind, s] = (b.dataset.slot || b.dataset.add).split(':');
+        openAddPicker(kind, +s, level);
+      }
     });
-    if (done.length) {
+    if (changes) {
       $('#lu-hear-new').onclick = () => speak(buildLevelUp('plain'));
       $('#lu-copy').onclick = () => copyText(buildLevelUp('plain'));
       $('#lu-save').onclick = () => {
-        const sentenceAfter = buildLevelUp('plain');
+        const whole = buildLevelUp('plain');
+        const done = lu.units.filter((u) => u.chosen);
         done.forEach((u) => {
           const word = u.chosen.replace(/,$/, '');
-          const sentence = sentenceFor(u, sentenceAfter);
-          bank.add({ word: word.toLowerCase() === word ? word : word.charAt(0).toLowerCase() + word.slice(1), cls: u.cls, replaced: unitOriginal(u), sentence, definition: '', example: '', synonyms: [] });
+          bank.add({ word: word.toLowerCase() === word ? word : lowerFirst(word), cls: u.cls, replaced: unitOriginal(u), sentence: sentenceFor(u.chosen, whole), definition: '', example: '', synonyms: [] });
         });
-        toast(`⭐ ${done.length} new word${done.length === 1 ? '' : 's'} saved to your word bank`);
+        Object.values(lu.adds.adverb).forEach((a) => {
+          bank.add({ word: a.word, cls: 'adverb', sentence: sentenceFor(a.word, whole), definition: '', example: '', synonyms: [] });
+        });
+        const n = done.length + Object.keys(lu.adds.adverb).length;
+        toast(`⭐ ${n} new word${n === 1 ? '' : 's'} saved to your word bank`);
       };
+      $('#lu-save').disabled = !(c.swaps || c.adverb);
     }
   }
 
-  // the levelled-up sentence that contains a unit
-  function sentenceFor(u, whole) {
+  // the levelled-up sentence that contains a word
+  function sentenceFor(word, whole) {
     const parts = whole.match(/[^.!?]+[.!?]+["'”’]?|[^.!?]+$/g) || [whole];
-    return (parts.find((s) => s.includes(u.chosen)) || whole).trim();
+    return (parts.find((s) => s.includes(word)) || whole).trim();
   }
 
   function copyText(text) {
@@ -1250,52 +1376,45 @@
     ta.remove();
   }
 
-  function luSentenceHtml(u) {
+  // a sentence of the original writing with some tokens highlighted
+  function luSentenceHtml(s, markIds, cls) {
     const tokens = lu.analysis.tokens;
-    const first = tokens[u.ids[0]];
-    const ts = tokens.filter((t) => t.sentence === first.sentence);
-    return ts.map((t, k) => {
-      const text = (k ? t.pre : '') + t.text + (k === ts.length - 1 ? t.post.trimEnd() : t.post);
-      return u.ids.includes(tokens.indexOf(t)) ? `<mark class="c-${u.cls}">${esc(text.trim())}</mark>${/\s$/.test(text) ? ' ' : ''}` : esc(text);
+    const ts = tokens.map((t, i) => [t, i]).filter(([t]) => t.sentence === s);
+    return ts.map(([t, i], k) => {
+      const pre = k ? t.pre : t.pre.replace(/^\s+/, '');
+      const post = k === ts.length - 1 ? t.post.trimEnd() : t.post;
+      return esc(pre) + (markIds.includes(i) ? `<mark class="c-${cls}">${esc(t.text)}</mark>` : esc(t.text)) + esc(post);
     }).join('');
   }
 
-  function pickerHtml(u, title, why, groups, loading) {
-    const cls = u.cls;
-    return `
-      <div class="modal-head">
-        <div>
-          <h2 id="modal-title">${esc(title)}</h2>
-          ${badge(cls, clsInfo(cls).label)}
-        </div>
-        <button class="close" data-close aria-label="Close">×</button>
-      </div>
-      <div class="modal-body">
-        ${why ? `<section class="note">💡 ${esc(why)}</section>` : ''}
-        <section>
-          <h3>📝 In your writing</h3>
-          <div class="context">${luSentenceHtml(u)}</div>
-        </section>
-        <section id="lu-options">
-          ${loading ? '<div class="loading"><span class="spinner"></span> Finding better words…</div>' : optionGroups(groups)}
-        </section>
-      </div>
-      <div class="modal-foot">
-        <button class="btn" id="lu-hear-word">🔊 Hear it</button>
-        <button class="btn" id="lu-keep" aria-label="Keep “${esc(unitOriginal(u))}”">↩️ Keep my word</button>
-      </div>`;
-  }
-
-  function optionGroups(groups) {
+  function optionGroups(groups, attr) {
     if (!groups.length || !groups.some((g) => g.words.length)) {
       return '<p class="muted">We couldn’t find any upgrades for this word. Sometimes the word you have is already the best one!</p>';
     }
     return groups.filter((g) => g.words.length).map((g) => `
-      <h3>${LU_TIER[g.tier][0]} ${LU_TIER[g.tier][1] ? `<span class="muted small" style="font-weight:400">– ${LU_TIER[g.tier][1]}</span>` : ''}</h3>
-      <div class="lu-options">${g.words.map((w) => `<button class="lu-opt tier-${g.tier}" data-word="${esc(w)}" data-tier="${g.tier}">${esc(w)}</button>`).join('')}</div>`).join('');
+      <h3>${g.title || LU_TIER[g.tier][0]} ${!g.title && LU_TIER[g.tier][1] ? `<span class="muted small" style="font-weight:400">– ${LU_TIER[g.tier][1]}</span>` : ''}</h3>
+      <div class="lu-options">${g.words.map((w) => `<button class="lu-opt tier-${g.tier}" data-${attr || 'word'}="${esc(w)}" data-tier="${g.tier}">${esc(w)}</button>`).join('')}</div>`).join('');
   }
 
-  function wirePicker(modal, u) {
+  function pickerShell(title, cls, badgeText, why, context, body, foot) {
+    return `
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title">${esc(title)}</h2>
+          ${badge(cls, badgeText)}
+        </div>
+        <button class="close" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        ${why ? `<section class="note">💡 ${why}</section>` : ''}
+        ${context ? `<section><h3>📝 In your writing</h3><div class="context">${context}</div></section>` : ''}
+        <section id="lu-options">${body}</section>
+      </div>
+      <div class="modal-foot">${foot}</div>`;
+  }
+
+  // ---- swapping a word
+  function wireSwapPicker(modal, u) {
     $('#lu-hear-word', modal).onclick = () => speak(u.chosen || unitOriginal(u));
     $('#lu-keep', modal).onclick = () => {
       u.chosen = null; u.tier = null;
@@ -1315,17 +1434,19 @@
       toast(`⚡ ${before} → ${u.chosen}`);
     });
   }
+  const swapFoot = (u) => `<button class="btn" id="lu-hear-word">🔊 Hear it</button>
+    <button class="btn" id="lu-keep" aria-label="Keep “${esc(unitOriginal(u))}”">↩️ Keep my word</button>`;
 
   function openLevelUpPicker(u, level) {
     const first = lu.analysis.tokens[u.ids[0]];
-    const capital = /^[A-Z]/.test(first.text);
-    const groups = window.LevelUp.suggestions(u, level, window.Grammar.inflect, capital);
+    const groups = window.LevelUp.suggestions(u, level, window.Grammar.inflect, /^[A-Z]/.test(first.text));
     const e = window.LevelUp.ENTRIES[u.key];
     const why = u.kind === 'very'
-      ? `Instead of “${unitOriginal(u)}”, use ONE powerful word. It makes your writing sharper!`
-      : e.why;
-    const modal = openModal(pickerHtml(u, unitOriginal(u), why, groups), u.cls);
-    wirePicker(modal, u);
+      ? `Instead of “${esc(unitOriginal(u))}”, use ONE powerful word. It makes your writing sharper!`
+      : esc(e ? e.why : '');
+    const modal = openModal(pickerShell(unitOriginal(u), u.cls, clsInfo(u.cls).label, why,
+      luSentenceHtml(first.sentence, u.ids, u.cls), optionGroups(groups), swapFoot(u)), u.cls);
+    wireSwapPicker(modal, u);
   }
 
   // any other word: look for synonyms online
@@ -1336,8 +1457,9 @@
     const ex = window.Grammar.explain(lu.analysis, t);
     const u = { ids: [i], key: null, cls: t.cls, form: ex.form, kind: 'extra', extra: true, chosen: null, tier: null };
     const capital = /^[A-Z]/.test(t.text);
-    const modal = openModal(pickerHtml(u, t.text, '', [], true), t.cls);
-    wirePicker(modal, u);
+    const modal = openModal(pickerShell(t.text, t.cls, clsInfo(t.cls).label, '', luSentenceHtml(t.sentence, [i], t.cls),
+      '<div class="loading"><span class="spinner"></span> Finding better words…</div>', swapFoot(u)), t.cls);
+    wireSwapPicker(modal, u);
     const fix = (w) => window.LevelUp.shape(w, ex.form, window.Grammar.inflect, capital);
     const word = ex.lookup || t.text.toLowerCase();
     const req = level === 'upper'
@@ -1357,6 +1479,121 @@
       const box = $('#lu-options', modal);
       if (box) box.innerHTML = offlineMsg();
     });
+  }
+
+  // ---- adding an adverb, opener or conjunction
+  function openAddPicker(kind, s, level) {
+    const LU = window.LevelUp;
+    const tokens = lu.analysis.tokens;
+    const existing = lu.adds[kind][s];
+    const removeBtn = existing ? `<button class="btn" id="lu-remove">🗑️ Remove “${esc(kind === 'conj' ? existing.conj : existing.word || existing.text)}”</button>` : '<button class="btn" data-close>Not now</button>';
+    const foot = `<button class="btn" id="lu-hear-sentence">🔊 Hear my writing</button>${removeBtn}`;
+    let modal;
+
+    if (kind === 'adverb') {
+      const slot = lu.slots.adverb[s];
+      const verb = tokens[slot.verb];
+      const verbUnit = lu.units.find((u) => u.ids.includes(slot.verb) && u.chosen);
+      const verbText = verbUnit ? verbUnit.chosen : verb.text;
+      const groups = LU.adverbsFor(slot.group, level);
+      const why = level === 'upper'
+        ? `Add an adverb to show exactly HOW ${esc(`‘${verbText}’`)} happens. It will go ${slot.pos === 'before' ? 'just before' : 'just after'} the verb. Choose one that fits the mood of your writing.`
+        : `Add an adverb to say HOW ${esc(`‘${verbText}’`)} happens.`;
+      modal = openModal(pickerShell('Add an adverb', 'adverb', 'Adverb', why, luSentenceHtml(s, [slot.verb], 'verb'), optionGroups(groups), foot), 'adverb');
+      $('#lu-options', modal).addEventListener('click', (ev) => {
+        const b = ev.target.closest('.lu-opt');
+        if (!b) return;
+        lu.adds.adverb[s] = { word: b.dataset.word, tier: b.dataset.tier };
+        closeModal(); renderLevelUp();
+        toast(`➕ Added the adverb “${b.dataset.word}”`);
+      });
+    }
+
+    if (kind === 'opener') {
+      const sets = LU.openersFor(level);
+      const legend = level === 'upper' ? '<p class="small muted" style="margin:0 0 6px"><span class="lu-dot tier-challenge"></span> 🚀 challenge &nbsp; <span class="lu-dot tier-ambitious"></span> ✨ ambitious</p>' : '';
+      const body = legend + sets.map((set) => `<h3>${set.label}</h3>
+        <div class="lu-options">${set.groups.map((g) => g.words.map((w) => `<button class="lu-opt tier-${g.tier}" data-word="${esc(w)}" data-tier="${g.tier}">${esc(w)}</button>`).join('')).join('')}</div>`).join('') + `
+        <h3>✍️ Or write your own</h3>
+        <div class="lu-own">
+          <input id="lu-own-text" type="text" placeholder="e.g. Just after midnight" autocomplete="off" aria-label="Your own sentence opener">
+          <button class="btn primary" id="lu-own-add">Add</button>
+        </div>`;
+      const why = level === 'upper'
+        ? 'Start this sentence with a <strong>fronted adverbial</strong> to tell the reader when, where or how. A comma will be added after it.'
+        : 'Start this sentence with an opener that tells us <strong>when</strong>, <strong>where</strong> or <strong>how</strong>. A comma will be added after it.';
+      modal = openModal(pickerShell('Add a sentence opener', 'adverb', level === 'upper' ? 'Fronted adverbial' : 'Sentence opener', why,
+        luSentenceHtml(s, [lu.slots.opener[s]], 'adverb'), body, foot), 'adverb');
+      const choose = (text, tier) => {
+        lu.adds.opener[s] = { text: upperFirst(text.trim().replace(/[,.]+$/, '')), tier };
+        closeModal(); renderLevelUp();
+        toast('🎬 Sentence opener added – with a comma!');
+      };
+      $('#lu-options', modal).addEventListener('click', (ev) => {
+        const b = ev.target.closest('.lu-opt');
+        if (b) choose(b.dataset.word, b.dataset.tier);
+      });
+      $('#lu-own-add', modal).onclick = () => {
+        const v = $('#lu-own-text', modal).value.trim();
+        if (!v) { toast('Type your own opener first'); return; }
+        choose(v, 'own');
+      };
+    }
+
+    if (kind === 'conj') {
+      const slot = lu.slots.conj[s];
+      const sets = LU.conjunctionsFor(level);
+      const nextText = slot.join ? luSentenceHtml(slot.next, [], 'conjunction') : '';
+      const coordTitle = level === 'upper' ? '🔗 Coordinating conjunctions (FANBOYS)' : '🔗 Joining words';
+      const subTitle = level === 'upper' ? '🧩 Subordinating conjunctions' : '🧩 Joining words that explain';
+      const tier = level === 'upper' ? 'ambitious' : 'lower';
+      const joinPart = slot.join ? `
+        <h3>➡️ Join it to the next sentence</h3>
+        <p class="small muted" style="margin-top:0">Next sentence: “${nextText}”</p>
+        ${optionGroups([{ title: coordTitle, tier, words: sets.coordinating }, { title: subTitle, tier: level === 'upper' ? 'challenge' : 'lower', words: sets.subordinating }], 'join')}` : '';
+      const extendPart = `
+        <h3>✍️ ${slot.join ? 'Or add' : 'Add'} more to this sentence</h3>
+        <p class="small muted" style="margin-top:0">Choose a conjunction, then finish the sentence in your own words.</p>
+        <div class="chips lu-conj-pick">${sets.coordinating.concat(sets.subordinating).map((c2) => `<button class="chip" data-pick-conj="${esc(c2)}">${esc(c2)}</button>`).join('')}</div>
+        <div class="lu-own">
+          <span class="lu-own-conj" id="lu-own-conj">because</span>
+          <input id="lu-own-text" type="text" placeholder="…what happens next or why?" autocomplete="off" aria-label="Finish the sentence">
+          <button class="btn primary" id="lu-own-add">Add</button>
+        </div>`;
+      const why = level === 'upper'
+        ? 'Use a <strong>coordinating conjunction</strong> to join two equal clauses, or a <strong>subordinating conjunction</strong> to add a clause with extra information. Read it aloud afterwards to check it makes sense!'
+        : 'Use a joining word to make a longer sentence. Read it aloud afterwards to check it makes sense!';
+      modal = openModal(pickerShell('Add a conjunction', 'conjunction', 'Conjunction', why, luSentenceHtml(s, [slot.last], 'conjunction'), joinPart + extendPart, foot), 'conjunction');
+      let pickedConj = 'because';
+      $$('[data-pick-conj]', modal).forEach((b) => {
+        b.onclick = () => {
+          pickedConj = b.dataset.pickConj;
+          $('#lu-own-conj', modal).textContent = pickedConj;
+          $$('[data-pick-conj]', modal).forEach((x) => x.classList.toggle('on', x === b));
+          $('#lu-own-text', modal).focus();
+        };
+      });
+      $('#lu-options', modal).addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-join]');
+        if (!b) return;
+        lu.adds.conj[s] = { kind: 'join', conj: b.dataset.join, tier: b.dataset.tier };
+        delete lu.adds.opener[slot.next];
+        closeModal(); renderLevelUp();
+        toast(`🔗 Joined with “${b.dataset.join}” – read it aloud to check it makes sense!`);
+      });
+      $('#lu-own-add', modal).onclick = () => {
+        const v = $('#lu-own-text', modal).value.trim().replace(/[.!?]+$/, '');
+        if (!v) { toast('Finish the sentence first!'); $('#lu-own-text', modal).focus(); return; }
+        const sub = sets.subordinating.includes(pickedConj);
+        lu.adds.conj[s] = { kind: 'extend', conj: pickedConj, clause: v, tier: level === 'upper' ? (sub ? 'challenge' : 'ambitious') : 'lower' };
+        closeModal(); renderLevelUp();
+        toast(`🔗 Added “${pickedConj} ${v}”`);
+      };
+    }
+
+    $('#lu-hear-sentence', modal).onclick = () => speak(buildLevelUp('plain'));
+    const rm = $('#lu-remove', modal);
+    if (rm) rm.onclick = () => { delete lu.adds[kind][s]; closeModal(); renderLevelUp(); };
   }
 
   // ================================================================ BANK

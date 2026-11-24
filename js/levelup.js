@@ -470,5 +470,185 @@
     })).filter((g) => g.words.length);
   }
 
-  return { ENTRIES, findUnits, suggestions, shape, entryFor };
+  // =================================================== more ways to level up
+  // ---- adverbs: which list depends on the kind of verb
+  const ADVERBS = {
+    speech: {
+      lower: L('quietly, loudly, angrily, happily, sadly, nervously'),
+      ambitious: L('anxiously, impatiently, softly, firmly, cheerfully, eagerly'),
+      challenge: L('hesitantly, sarcastically, triumphantly, solemnly, indignantly, breathlessly'),
+    },
+    move: {
+      lower: L('quickly, slowly, carefully, quietly, bravely, happily'),
+      ambitious: L('cautiously, eagerly, wearily, briskly, gracefully, nervously'),
+      challenge: L('stealthily, hesitantly, purposefully, frantically, sluggishly, nimbly'),
+    },
+    eat: {
+      lower: L('hungrily, greedily, noisily, slowly, happily'),
+      ambitious: L('eagerly, messily, politely, quickly, gratefully'),
+      challenge: L('ravenously, voraciously, daintily, gleefully, sheepishly'),
+    },
+    look: {
+      lower: L('carefully, closely, quickly, sadly, happily'),
+      ambitious: L('curiously, nervously, anxiously, longingly, proudly'),
+      challenge: L('suspiciously, intently, warily, wistfully, incredulously'),
+    },
+    general: {
+      lower: L('quickly, slowly, carefully, quietly, suddenly, happily, sadly, bravely'),
+      ambitious: L('cautiously, eagerly, nervously, gently, proudly, reluctantly'),
+      challenge: L('tentatively, frantically, meticulously, defiantly, jubilantly, apprehensively'),
+    },
+  };
+  const VERB_GROUPS = {
+    speech: L('say, shout, whisper, ask, reply, yell, call, cry, scream, mutter, mumble, exclaim, announce, answer, tell, sing, giggle, laugh, sigh, snap, bellow, murmur, explain, speak, talk, shriek, gasp, moan, groan'),
+    move: L('go, run, walk, come, climb, jump, swim, fly, move, rush, hurry, crawl, creep, march, ride, race, dash, leave, arrive, wander, stroll, skip, hop, step, travel, escape, sneak, tiptoe, dance, chase, follow, return, enter, slip, slide, trudge, stride, fall, sprint, scurry, head'),
+    eat: L('eat, drink, munch, gobble, chew, bite, swallow, sip, gulp, lick, taste, nibble, devour'),
+    look: L('look, see, watch, stare, peer, glance, gaze, peek, notice, spot, read, search, glare, study'),
+  };
+
+  // ---- sentence openers (fronted adverbials): when, where, how
+  const OPENERS = {
+    when: {
+      label: '⏰ When?',
+      lower: L('Later that day, After lunch, One morning, At last, Suddenly, The next day'),
+      ambitious: L('As the sun set, Before long, Moments later, Without warning, Early the next morning, As soon as the bell rang'),
+      challenge: L('In the dead of night, In the blink of an eye, As dawn broke, Without a moment’s hesitation, Long before anyone woke, As the clock struck midnight'),
+    },
+    where: {
+      label: '📍 Where?',
+      lower: L('Outside, In the distance, Nearby, Inside the house, At the park'),
+      ambitious: L('Far in the distance, Deep in the forest, Beneath the old bridge, High above the clouds, Across the busy street'),
+      challenge: L('Under a blanket of fog, Beneath the flickering streetlight, In the shadow of the mountain, Amid the crowded market, On the edge of the cliff'),
+    },
+    how: {
+      label: '🎭 How?',
+      lower: L('Slowly, Quietly, Carefully, Excitedly, Nervously, Happily'),
+      ambitious: L('Without a sound, With a big smile, Cautiously, As quietly as possible, With great excitement'),
+      challenge: L('With trembling hands, Against all odds, To everyone’s astonishment, With a heavy heart, Holding their breath, In complete silence'),
+    },
+  };
+
+  // ---- conjunctions
+  const CONJUNCTIONS = {
+    lower: { coordinating: L('and, but, so, or'), subordinating: L('because, when, if, until') },
+    upper: {
+      coordinating: L('and, but, so, or, yet'),
+      subordinating: L('because, although, while, when, until, since, unless, whereas, even though, as soon as'),
+    },
+  };
+  const COMMA_BEFORE = ['but', 'so', 'yet', 'whereas'];
+
+  function tiersFor(lists, level) {
+    return (level === 'upper' ? ['challenge', 'ambitious'] : ['lower']).map((tier) => ({ tier, words: lists[tier] }));
+  }
+  function adverbsFor(group, level) { return tiersFor(ADVERBS[group] || ADVERBS.general, level); }
+  function openersFor(level) {
+    return Object.keys(OPENERS).map((k) => ({ key: k, label: OPENERS[k].label, groups: tiersFor(OPENERS[k], level) }));
+  }
+  function conjunctionsFor(level) { return CONJUNCTIONS[level === 'upper' ? 'upper' : 'lower']; }
+
+  // which tokens are inside speech marks
+  function quoteMap(tokens) {
+    let q = false;
+    const flip = (s) => {
+      for (const ch of s) {
+        if (ch === '“') q = true;
+        else if (ch === '”') q = false;
+        else if (ch === '"') q = !q;
+      }
+    };
+    return tokens.map((t) => { flip(t.pre); const inside = q; flip(t.post); return inside; });
+  }
+
+  function sentences(analysis) {
+    const map = new Map();
+    analysis.tokens.forEach((t, i) => {
+      if (!/[a-z0-9]/i.test(t.text)) return;
+      if (!map.has(t.sentence)) map.set(t.sentence, []);
+      map.get(t.sentence).push(i);
+    });
+    return map;   // sentence id -> token indexes (words only)
+  }
+
+  function verbGroup(tok) {
+    const r = tok.root || bare(tok.text);
+    return Object.keys(VERB_GROUPS).find((g) => VERB_GROUPS[g].includes(r) || VERB_GROUPS[g].includes(bare(tok.text))) || 'general';
+  }
+
+  /** Where an adverb could go in each sentence: { sentence: { verb, at, pos: 'before'|'after', group } } */
+  function adverbSlots(analysis) {
+    const tokens = analysis.tokens;
+    const inQ = quoteMap(tokens);
+    const out = {};
+    sentences(analysis).forEach((idx, s) => {
+      for (const i of idx) {
+        const t = tokens[i];
+        if (inQ[i] || t.cls !== 'verb' || ['auxiliary', 'modal', 'being'].includes(t.sub) || t.tags.has('Copula')) continue;
+        const prev = tokens[i - 1] && tokens[i - 1].sentence === s ? tokens[i - 1] : null;
+        const next = tokens[i + 1] && tokens[i + 1].sentence === s ? tokens[i + 1] : null;
+        const howAdverb = (x, k) => x && !inQ[k] && x.cls === 'adverb' && (x.sub === 'manner' || /ly$/.test(bare(x.text)));
+        if (howAdverb(prev, i - 1) || howAdverb(next, i + 1)) break;
+        let at = i;
+        let pos = 'after';
+        if (prev && /["”]\s*$/.test(prev.post) && next && (next.cls === 'propernoun' || next.cls === 'pronoun')) {
+          at = i + 1;                                     // "…?" said Sam nervously.
+        } else if (next && !/[,.;:!?]/.test(t.post) && next.cls === 'adverb' && next.sub === 'place') {
+          at = i + 1;                                     // looked up nervously
+        } else if (next && !/[,.;:!?]/.test(t.post) && !['preposition', 'conjunction'].includes(next.cls)) {
+          pos = 'before';                                 // hungrily ate her sandwich
+        }
+        out[s] = { verb: i, at, pos, group: verbGroup(t) };
+        break;
+      }
+    });
+    return out;
+  }
+
+  /** Sentences that could start with a fronted adverbial: { sentence: firstTokenIndex } */
+  function openerSlots(analysis) {
+    const tokens = analysis.tokens;
+    const inQ = quoteMap(tokens);
+    const out = {};
+    sentences(analysis).forEach((idx, s) => {
+      const i = idx[0];
+      const t = tokens[i];
+      const last = tokens[idx[idx.length - 1]];
+      if (idx.length < 3 || inQ[i] || /["“”]/.test(t.pre) || /\?/.test(last.post)) return;
+      if (['adverb', 'preposition', 'conjunction', 'interjection'].includes(t.cls) || bare(t.text) === 'then') return;
+      if (/,/.test(t.post)) return;
+      out[s] = i;
+    });
+    return out;
+  }
+
+  /** Sentences that could be joined to the next one or extended with a conjunction. */
+  function conjunctionSlots(analysis) {
+    const tokens = analysis.tokens;
+    const inQ = quoteMap(tokens);
+    const sents = sentences(analysis);
+    const ids = Array.from(sents.keys());
+    const para = new Map();
+    analysis.paragraphs.forEach((p, pi) => p.tokens.forEach((t) => para.set(t.id, pi)));
+    const out = {};
+    ids.forEach((s, k) => {
+      const idx = sents.get(s);
+      const lastI = idx[idx.length - 1];
+      const last = tokens[lastI];
+      if (idx.length < 2 || inQ[lastI] || !/^[.!]/.test(last.post) || /["”]/.test(last.post)) return;
+      const nextIdx = sents.get(ids[k + 1]);
+      let join = false;
+      if (nextIdx && /^\.\s*$/.test(last.post) && para.get(tokens[nextIdx[0]].id) === para.get(last.id)) {
+        const first = tokens[nextIdx[0]];
+        join = !inQ[nextIdx[0]] && !/["“”]/.test(first.pre) && idx.length <= 14 && nextIdx.length <= 14 &&
+          !/\?/.test(tokens[nextIdx[nextIdx.length - 1]].post);
+      }
+      out[s] = { last: lastI, join, next: join ? ids[k + 1] : null };
+    });
+    return out;
+  }
+
+  return {
+    ENTRIES, findUnits, suggestions, shape, entryFor,
+    adverbsFor, openersFor, conjunctionsFor, adverbSlots, openerSlots, conjunctionSlots, COMMA_BEFORE,
+  };
 });

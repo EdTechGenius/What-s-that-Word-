@@ -49,6 +49,16 @@ const LU = require('../js/levelup.js');
   assert.ok(LU.suggestions(said, 'lower', G.inflect)[0].words.includes('shouted'));
   assert.strictEqual(LU.shape('colossal', 'comparative', G.inflect), 'more colossal');
   assert.strictEqual(LU.shape('gallop', 'past', G.inflect), 'galloped');
+  // more ways to level up: where adverbs, openers and conjunctions can go
+  const b = G.analyse('"Who is there?" said Sam. He walked into the dark house. The dog ate its dinner. It was cold.');
+  const adv = LU.adverbSlots(b);
+  const T = b.tokens;
+  assert.deepStrictEqual(Object.values(adv).map((x) => `${T[x.verb].text}:${x.pos}:${T[x.at].text}:${x.group}`),
+    ['said:after:Sam:speech', 'walked:after:walked:move', 'ate:before:ate:eat']);
+  assert.deepStrictEqual(Object.values(LU.openerSlots(b)).map((i) => T[i].text), ['He', 'The', 'It']);
+  const cj = LU.conjunctionSlots(b);
+  assert.ok(Object.values(cj).some((x) => T[x.last].text === 'house' && x.join));
+  assert.ok(LU.conjunctionsFor('upper').subordinating.includes('although'));
   console.log('Level Up checks passed.');
 }
 

@@ -46,6 +46,16 @@ Pupils type or paste their writing and choose **Lower** or **Upper primary** (th
 * **“very big”**, **“really happy”** and similar phrases are replaced with one powerful word.
 * A sentence starting with **“Then”** can become a fronted adverbial (*Moments later, …*), and the comma is added automatically.
 * Tap **any other** noun, verb, adjective or adverb to search for upgrades online.
+
+Level Up! has **four ways to level up**, as tabs:
+| Tab | What pupils do | Lower primary | Upper primary |
+| --- | --- | --- | --- |
+| 🔁 Swap words | swap underlined plain words | more exciting words | ✨ ambitious and 🚀 challenge words |
+| ➕ Add adverbs | tap a ＋ next to a verb to add an adverb (one per sentence, placed before or after the verb) | *quietly, carefully, happily…* | *hesitantly, stealthily, ravenously…*, chosen to suit the verb (speaking, moving, eating, looking) |
+| 🎬 Sentence openers | tap a ＋ at the start of a sentence to add a fronted adverbial (*when / where / how*), or write their own. The comma is added and the next letter becomes lower case | *Later that day, In the distance, Slowly* | *In the dead of night, Beneath the flickering streetlight, With trembling hands* |
+| 🔗 Conjunctions | tap a ＋ at the end of a sentence to **join** it to the next one, or **add** a clause in their own words | *and, but, so, or* + *because, when, if, until* | coordinating (FANBOYS) + subordinating (*although, while, unless, whereas, even though…*) |
+
+Each tab shows how many upgrades have been made. Every upgrade can be tapped again to change or remove it.
 * Swapped words are highlighted, with stars to show progress and a **Before / After** comparison. Pupils can hear, copy, undo, or save their new words to the word bank.
 
 ### ⭐ My Word Bank
