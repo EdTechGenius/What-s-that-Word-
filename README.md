@@ -66,6 +66,13 @@ Eleven techniques: **simile, metaphor, personification, alliteration, onomatopoe
 * **Try it yourself:** a writing challenge for each technique. Similes, metaphors, alliteration and onomatopoeia are checked automatically. Pupils can save their own examples to the word bank.
 * All the examples are in `js/figurative.js`, so teachers can add their own.
 
+### 🧱 Alan Peat Sentences
+All 22 sentence types from the school's sentence-type cards, in the same colour sets (red, light blue, blue, green): 2A, …as a / …like a, BOYS, 3 ___ed, double ly, ___ing ___ed, verb person, emotion word, noun which/where/who, the more the more, ad same ad, last word first word, De: De, personification of weather, O. (I.), 3 bad – question, if if if then, 2 pairs, some; others, imagine 3 examples, P.C. and one word: definition.
+* Each type has its own page with the **formula** (parts in colour), **What is it?**, the **building blocks**, examples with the key parts highlighted (🔊 read aloud) and a top tip.
+* **Your turn:** as pupils type, a **success-criteria checklist** ticks off each part, e.g. “Starts with three words ending in -ed ✓”, “A dash after the third word ○”. Pupils then **add their sentence to their examples**.
+* **My sentence collection** shows every sentence a pupil has written, grouped by type, with a progress bar of the types they’ve tried. They can copy, print, or save sentences to their word bank.
+* All the content is in `js/peat.js`.
+
 ### ⭐ My Word Bank
 * Words saved from either corner, with their word class, meaning, the sentence they came from, and synonyms.
 * Pupils can filter by word class, search, hear a word, look it up again, remove words and print the bank.
@@ -95,6 +102,7 @@ and open http://localhost:8000.
 | `js/lookup.js` | Gets definitions from the [Free Dictionary API](https://dictionaryapi.dev) (Wiktionary data) and synonyms from [Datamuse](https://www.datamuse.com/api/). Example sentences also come from [Wiktionary](https://en.wiktionary.org). All are free and need no API key. **They need an internet connection.** |
 | `js/levelup.js` | The plain-word lists and upgrade suggestions for Level Up!, and the rules for spotting them. |
 | `js/figurative.js` | All the Figurative Language Corner content (definitions, examples, themes) and the "Try it yourself" checks. |
+| `js/peat.js` | The Alan Peat sentence types, examples and checklist rules. |
 | `js/wordparts.js` | Splits words into prefixes, roots and suffixes for the Word detective. |
 | `js/app.js` | The pages, word cards, read-aloud and word bank. |
 | `sw.js` | Lets the app open offline and remembers words that were looked up before. |

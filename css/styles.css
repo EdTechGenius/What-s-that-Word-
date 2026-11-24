@@ -585,3 +585,49 @@ mark.add { background: #D0EBFF; box-shadow: inset 0 -3px 0 #1C7ED6; padding: 0 3
 #fig-feedback { margin-top: 12px; }
 .fig-theme-row { margin-bottom: 16px; }
 .fig-prevnext { display: flex; justify-content: space-between; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+
+/* ---------- Alan Peat Sentences ---------- */
+.c-peat { --c: #E7F5FF; --cl: #1971C2; }
+.corner.peat { background: linear-gradient(160deg, #E7F5FF, #EBFBEE); }
+.corner .sample .peat-demo { background: #fff; border-bottom: 3px solid #1971C2; font-weight: 700; }
+.peat-sets { margin-bottom: 18px; }
+.peat-set-chip .peat-dot, .peat-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); display: inline-block; }
+.peat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.peat-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-radius: 20px; text-decoration: none; color: var(--ink);
+  background: #fff; border: 4px double var(--pc); box-shadow: var(--shadow); transition: transform .1s;
+}
+.peat-card:hover { transform: translateY(-2px); }
+.peat-card strong { font-size: 21px; font-weight: 800; color: var(--pc); line-height: 1.2; }
+.peat-set-label { align-self: flex-start; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--pc); background: var(--ps); padding: 2px 10px; border-radius: 999px; }
+.peat-formula { font-size: 15px; padding: 8px 10px; border-radius: 10px; background: var(--ps); }
+.peat-formula b { color: var(--pc); }
+.peat-formula.big { font-size: 22px; margin: 6px 0 0; padding: 12px 16px; background: #fff; display: inline-block; }
+.peat-eg { font-style: italic; color: var(--ink-soft); font-size: 15px; }
+.peat-mine { margin-top: auto; font-weight: 700; color: var(--pc); font-size: 15px; }
+.peat-hero { padding: 22px 24px; border-radius: 24px; background: var(--ps); border: 5px double var(--pc); margin-bottom: 20px; }
+.peat-hero h1 { font-size: clamp(30px, 5vw, 48px); font-weight: 800; color: var(--pc); margin: 8px 0 0; }
+.peat-learn, .peat-try, .peat-mine-list { border-top: 8px solid var(--pc); }
+.peat-learn h2, .peat-try h2, .peat-mine-list h2 { font-size: 22px; font-weight: 800; }
+.peat-learn h3 { font-size: 17px; font-weight: 700; margin: 16px 0 8px; }
+.peat-learn p { margin: 0; }
+.peat-parts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.peat-part { padding: 6px 12px; border-radius: 10px; border: 2px solid var(--pc); background: var(--ps); font-weight: 600; font-size: 15px; }
+.peat-arrow { color: var(--pc); font-weight: 800; }
+.peat-examples mark, .peat-mine-list mark { background: var(--ps); color: var(--pc); font-weight: 800; padding: 0 2px; border-radius: 4px; box-shadow: inset 0 -.12em 0 var(--pc); }
+.peat-note { color: var(--muted); font-style: italic; }
+.peat-try textarea { width: 100%; padding: 14px; border-radius: 12px; border: 2px solid var(--line); background: #FFFDF9; font-size: 19px; resize: vertical; }
+.peat-try textarea:focus { border-color: var(--pc); outline: none; }
+.peat-check { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.peat-check li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-radius: 10px; background: #F8F9FA; font-size: 15px; transition: background .2s; }
+.peat-check .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; border: 2px solid #CED4DA; color: #ADB5BD; font-size: 14px; }
+.peat-check li.ok { background: #EBFBEE; }
+.peat-check li.ok .tick { background: #2F9E44; border-color: #2F9E44; color: #fff; }
+.peat-check li.self .tick { border: 0; }
+.peat-mine-list { margin-bottom: 20px; }
+.peat-mine-list h2 a { color: var(--pc); text-decoration: none; }
+.peat-mine-actions { display: flex; gap: 6px; align-items: center; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.peat-progress { display: grid; grid-template-columns: repeat(22, 1fr); gap: 4px; margin: 0 0 20px; }
+.peat-progress a { height: 14px; border-radius: 4px; background: #E9ECEF; border: 2px solid var(--pc); }
+.peat-progress a.done { background: var(--pc); }
+@media print { .peat-progress { display: none; } }

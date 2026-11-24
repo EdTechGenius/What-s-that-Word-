@@ -77,6 +77,18 @@ assert.ok(F.check('onomatopoeia', 'The bacon sizzled').ok);
 assert.strictEqual(F.check('idiom', 'anything'), null);
 console.log('Figurative language checks passed.');
 
+// Alan Peat sentences: every example passes its own checklist
+const P = require('../js/peat.js');
+assert.strictEqual(P.TYPES.length, 22);
+P.TYPES.forEach((t) => t.examples.forEach((e) => {
+  const failed = P.check(t, P.plain(e), G).filter((r) => r.ok === false);
+  assert.deepStrictEqual(failed, [], `${t.id}: "${P.plain(e)}"`);
+}));
+const find = (id) => P.TYPES.find((t) => t.id === id);
+assert.ok(P.check(find('boys'), 'I was tired so I slept.', G).some((r) => r.ok === false), 'BOYS needs a comma');
+assert.ok(P.check(find('3bad'), 'Pain, fear, hunger – what next.', G).some((r) => r.ok === false), '3 bad needs a question mark');
+console.log('Alan Peat sentence checks passed.');
+
 // word parts (with a tiny pretend dictionary)
 const WP = require('../js/wordparts.js');
 const known = new Set(['petrify', 'happy', 'unhappy', 'hope', 'port', 'transport', 'comfortable']);

@@ -57,7 +57,8 @@
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const FIG_INFO = { label: 'Figurative language', short: 'Fig', emoji: '🎨', kid: '' };
-  const clsInfo = (cls) => (cls === 'figurative' ? FIG_INFO : CLASSES[cls] || CLASSES.other);
+  const PEAT_INFO = { label: 'Alan Peat sentence', short: 'AP', emoji: '🧱', kid: '' };
+  const clsInfo = (cls) => (cls === 'figurative' ? FIG_INFO : cls === 'peat' ? PEAT_INFO : CLASSES[cls] || CLASSES.other);
   const badge = (cls, text) => `<span class="badge c-${esc(cls)}"><span class="swatch"></span>${esc(text || clsInfo(cls).label)}</span>`;
 
   let toastTimer;
@@ -151,6 +152,7 @@
     else if (page === 'vocab') renderVocab(decodeURIComponent(arg || ''));
     else if (page === 'levelup') renderLevelUp();
     else if (page === 'figurative') renderFigurative(decodeURIComponent(arg || ''));
+    else if (page === 'peat') renderPeat(decodeURIComponent(arg || ''));
     else if (page === 'bank') renderBank();
     else renderHome();
     applyFont();
@@ -208,6 +210,13 @@
           <div class="sample" aria-hidden="true"><span class="fig-demo">as quiet as a mouse</span><span class="fig-demo">Crash!</span></div>
           <p>Similes, metaphors, personification and more, each with examples, what they mean and when to use them.</p>
           <span class="go">Explore techniques →</span>
+        </a>
+        <a class="corner peat" href="#/peat">
+          <span class="corner-icon" aria-hidden="true">🧱</span>
+          <h2>Alan Peat Sentences</h2>
+          <div class="sample" aria-hidden="true"><span class="peat-demo">2A</span><span class="peat-demo">, BOYS</span><span class="peat-demo">3 ___ed,</span></div>
+          <p>All the sentence types in one place: how each one works, examples, and your own sentences with a checklist.</p>
+          <span class="go">Build sentences →</span>
         </a>
         <a class="corner bank" href="#/bank">
           <span class="corner-icon" aria-hidden="true">⭐</span>
@@ -1807,13 +1816,207 @@
     };
   }
 
+  // ================================================================ ALAN PEAT SENTENCES
+  let peatSet = '';
+  const peatStore = {
+    all() { return store.get('peat', {}); },
+    list(id) { return this.all()[id] || []; },
+    add(id, text) {
+      const all = this.all();
+      all[id] = [{ text, added: new Date().toISOString() }].concat(all[id] || []);
+      store.set('peat', all);
+    },
+    remove(id, index) {
+      const all = this.all();
+      (all[id] || []).splice(index, 1);
+      if (all[id] && !all[id].length) delete all[id];
+      store.set('peat', all);
+    },
+    count() { return Object.values(this.all()).reduce((n, l) => n + l.length, 0); },
+  };
+  const peatStyle = (t) => { const s = window.Peat.SETS[t.set]; return `--pc:${s.colour};--ps:${s.soft}`; };
+
+  function peatExampleHtml(t, e) {
+    const P = window.Peat;
+    const ex = P.example(e);
+    const text = P.parts(ex.t).map((p) => (p.mark ? `<mark>${esc(p.text)}</mark>` : esc(p.text))).join('');
+    return `<li><span>${text}${ex.note ? ` <span class="peat-note">(${esc(ex.note)})</span>` : ''}</span>
+      <button class="icon-btn" data-say="${esc(P.plain(ex))}" aria-label="Hear it">🔊</button></li>`;
+  }
+
+  function renderPeat(arg) {
+    document.title = 'Alan Peat Sentences · What’s That Word?';
+    app.onclick = (ev) => {
+      const say = ev.target.closest('[data-say]');
+      if (say) speak(say.dataset.say);
+    };
+    if (arg === 'mine') { renderPeatMine(); return; }
+    const t = arg && window.Peat.TYPES.find((x) => x.id === arg);
+    if (t) renderPeatType(t); else renderPeatHome();
+  }
+
+  function renderPeatHome() {
+    const P = window.Peat;
+    const mine = peatStore.all();
+    const total = peatStore.count();
+    const list = P.TYPES.filter((t) => !peatSet || t.set === peatSet);
+    app.innerHTML = `
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">🧱 Corner 5</p>
+          <h1>Alan Peat <em>Sentences</em></h1>
+        </div>
+        <a class="btn" href="#/peat/mine">📒 My sentence collection${total ? ` (${total})` : ''}</a>
+      </div>
+      <p class="lead">${P.TYPES.length} sentence types to make your writing more varied and interesting. Open one to see how it works, read the examples, then write and save your own!</p>
+      <div class="chips peat-sets" role="group" aria-label="Colour sets">
+        <button class="chip ${!peatSet ? 'on' : ''}" data-set="">All sentence types</button>
+        ${Object.keys(P.SETS).map((k) => `<button class="chip peat-set-chip ${peatSet === k ? 'on' : ''}" data-set="${k}" style="--pc:${P.SETS[k].colour};--ps:${P.SETS[k].soft}"><span class="peat-dot"></span>${esc(P.SETS[k].label)}</button>`).join('')}
+      </div>
+      <div class="peat-grid">
+        ${list.map((t) => {
+          const n = (mine[t.id] || []).length;
+          return `<a class="peat-card" href="#/peat/${t.id}" style="${peatStyle(t)}">
+            <span class="peat-set-label">${esc(P.SETS[t.set].label)}</span>
+            <strong>${esc(t.name)}</strong>
+            <span class="peat-formula">${t.formula}</span>
+            <span class="peat-eg">${esc(P.plain(t.examples[0]))}</span>
+            <span class="peat-mine">${n ? `✏️ ${n} of my own` : 'Write your own →'}</span>
+          </a>`;
+        }).join('')}
+      </div>`;
+    $$('[data-set]').forEach((b) => { b.onclick = () => { peatSet = b.dataset.set; renderPeatHome(); }; });
+  }
+
+  function peatChecklist(t, text) {
+    const res = window.Peat.check(t, text, window.Grammar);
+    return res.map((r) => `<li class="${r.ok === null ? 'self' : r.ok ? 'ok' : 'no'}">
+      <span class="tick" aria-hidden="true">${r.ok === null ? '👀' : r.ok ? '✓' : '○'}</span>${esc(r.text)}${r.ok === null ? ' <em class="muted">(check this yourself)</em>' : ''}</li>`).join('');
+  }
+
+  function renderPeatType(t) {
+    const P = window.Peat;
+    const set = P.SETS[t.set];
+    const idx = P.TYPES.indexOf(t);
+    const prev = P.TYPES[(idx - 1 + P.TYPES.length) % P.TYPES.length];
+    const next = P.TYPES[(idx + 1) % P.TYPES.length];
+    const mine = peatStore.list(t.id);
+    document.title = `${t.name} · Alan Peat Sentences`;
+    app.innerHTML = `
+      <nav class="fig-nav">
+        <a class="fig-back" href="#/peat">← All sentence types</a>
+        <a class="fig-back" href="#/peat/mine">📒 My sentence collection</a>
+      </nav>
+      <div class="peat-hero" style="${peatStyle(t)}">
+        <span class="peat-set-label">${esc(set.label)} · ${idx + 1} of ${P.TYPES.length}</span>
+        <h1>${esc(t.name)}</h1>
+        <p class="peat-formula big">${t.formula}</p>
+      </div>
+      <div class="fig-learn">
+        <section class="card peat-learn" style="${peatStyle(t)}">
+          <h2>📘 What is it?</h2>
+          <p>${t.what}</p>
+          <h3>🧱 Building blocks</h3>
+          <div class="peat-parts">${t.parts.map((p) => `<span class="peat-part">${esc(p)}</span>`).join('<span class="peat-arrow" aria-hidden="true">→</span>')}</div>
+          <h3>📌 Examples</h3>
+          <ul class="examples peat-examples">${t.examples.map((e) => peatExampleHtml(t, e)).join('')}</ul>
+          <p class="tip">💡 <strong>Top tip:</strong> ${esc(t.tip)}</p>
+        </section>
+        <section class="card peat-try" style="${peatStyle(t)}">
+          <h2>✍️ Your turn</h2>
+          <p style="margin-top:0">Write your own <strong>${esc(t.name.replace(/ sentences?$/i, ''))}</strong> sentence. The checklist ticks off each part as you write!</p>
+          <textarea id="peat-own" rows="4" placeholder="Write your sentence here…" spellcheck="true"></textarea>
+          <ul class="peat-check" id="peat-check" aria-live="polite">${peatChecklist(t, '')}</ul>
+          <div class="input-actions">
+            <button class="btn primary" id="peat-add">➕ Add to my examples</button>
+            <button class="btn" id="peat-hear">🔊 Hear it</button>
+          </div>
+        </section>
+      </div>
+      <section class="card peat-mine-list" style="${peatStyle(t)}">
+        <h2>📒 My examples <span class="muted small" style="font-weight:400">(${mine.length})</span></h2>
+        ${mine.length ? `<ul class="examples">${mine.map((m, i) => `
+          <li><span>${esc(m.text)}</span>
+            <span class="peat-mine-actions">
+              <button class="icon-btn" data-say="${esc(m.text)}" aria-label="Hear it">🔊</button>
+              ${bankButton({ word: m.text, cls: 'peat', sub: t.name, definition: '', example: '', sentence: '', synonyms: [] }, { small: true })}
+              <button class="icon-btn" data-peat-remove="${i}" aria-label="Remove this example">🗑️</button>
+            </span></li>`).join('')}</ul>`
+        : '<p class="muted" style="margin:0">You haven’t added any examples yet. Write one above and press <strong>➕ Add to my examples</strong>.</p>'}
+      </section>
+      <nav class="fig-prevnext">
+        <a class="btn" href="#/peat/${prev.id}">← ${esc(prev.name)}</a>
+        <a class="btn" href="#/peat/${next.id}">${esc(next.name)} →</a>
+      </nav>`;
+
+    const ta = $('#peat-own');
+    const list = $('#peat-check');
+    ta.addEventListener('input', () => { list.innerHTML = peatChecklist(t, ta.value); });
+    $('#peat-hear').onclick = () => { if (ta.value.trim()) speak(ta.value.trim()); else toast('Write your sentence first!'); };
+    $('#peat-add').onclick = () => {
+      const v = ta.value.trim().replace(/\s+/g, ' ');
+      if (!v) { toast('Write your sentence first!'); ta.focus(); return; }
+      const res = P.check(t, v, window.Grammar);
+      const missing = res.filter((r) => r.ok === false).length;
+      if (missing && !confirm(`${missing} part${missing === 1 ? ' of the checklist is' : 's of the checklist are'} not ticked yet. Add it anyway?`)) return;
+      peatStore.add(t.id, v);
+      toast(missing ? '📒 Added to your examples' : '🎉 Brilliant! Added to your examples');
+      renderPeatType(t);
+    };
+    $$('[data-peat-remove]').forEach((b) => {
+      b.onclick = () => {
+        if (!confirm('Remove this example?')) return;
+        peatStore.remove(t.id, +b.dataset.peatRemove);
+        renderPeatType(t);
+      };
+    });
+  }
+
+  function renderPeatMine() {
+    const P = window.Peat;
+    const all = peatStore.all();
+    const types = P.TYPES.filter((t) => (all[t.id] || []).length);
+    const total = peatStore.count();
+    document.title = 'My sentence collection · Alan Peat Sentences';
+    app.innerHTML = `
+      <nav class="fig-nav"><a class="fig-back" href="#/peat">← All sentence types</a></nav>
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">🧱 Alan Peat Sentences</p>
+          <h1>My sentence <em>collection</em></h1>
+        </div>
+        ${total ? `<div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn small" id="peat-copy">📋 Copy all</button>
+          <button class="btn small" id="peat-print">🖨️ Print</button>
+        </div>` : ''}
+      </div>
+      ${total ? `<p class="lead">You have written <strong>${total}</strong> sentence${total === 1 ? '' : 's'} using <strong>${types.length}</strong> of the ${P.TYPES.length} sentence types.${types.length < P.TYPES.length ? ' Can you try a new one?' : ' You’ve tried them all. Amazing!'}</p>
+        <div class="peat-progress" aria-hidden="true">${P.TYPES.map((t) => `<a href="#/peat/${t.id}" class="${(all[t.id] || []).length ? 'done' : ''}" style="${peatStyle(t)}" title="${esc(t.name)}"></a>`).join('')}</div>
+        ${types.map((t) => `
+          <section class="card peat-mine-list" style="${peatStyle(t)}">
+            <h2><a href="#/peat/${t.id}">${esc(t.name)}</a> <span class="peat-set-label">${esc(P.SETS[t.set].label)}</span></h2>
+            <ul class="examples">${all[t.id].map((m) => `<li><span>${esc(m.text)}</span><button class="icon-btn" data-say="${esc(m.text)}" aria-label="Hear it">🔊</button></li>`).join('')}</ul>
+          </section>`).join('')}`
+      : `<div class="card empty">
+          <div class="big" aria-hidden="true">📒</div>
+          <h2>Your collection is empty</h2>
+          <p class="muted">Open a sentence type, write your own example and press <strong>➕ Add to my examples</strong>. It will appear here.</p>
+          <a class="btn primary" href="#/peat">🧱 Choose a sentence type</a>
+        </div>`}
+      <p class="small muted" style="margin-top:24px">Your sentences are saved on this device, in this browser.</p>`;
+    if (total) {
+      $('#peat-print').onclick = () => window.print();
+      $('#peat-copy').onclick = () => copyText(types.map((t) => `${t.name}\n` + all[t.id].map((m) => `• ${m.text}`).join('\n')).join('\n\n'));
+    }
+  }
+
   // ================================================================ BANK
   let bankFilter = '';
   let bankSearch = '';
   function renderBank() {
     document.title = 'My Word Bank · What’s That Word?';
     const all = bank.all();
-    const classes = ORDER.concat(['figurative']).filter((c) => all.some((e) => e.cls === c));
+    const classes = ORDER.concat(['figurative', 'peat']).filter((c) => all.some((e) => e.cls === c));
     const list = all.filter((e) => (!bankFilter || e.cls === bankFilter) &&
       (!bankSearch || e.word.toLowerCase().includes(bankSearch.toLowerCase())));
 
@@ -1887,7 +2090,7 @@
         ${e.synonyms && e.synonyms.length ? `<p class="syn"><strong>Synonyms:</strong> ${esc(e.synonyms.join(', '))}</p>` : ''}
         <div class="row">
           <button class="btn small" data-say="${esc(e.word)}">🔊 Hear it</button>
-          ${e.cls !== 'propernoun' && e.cls !== 'figurative' ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
+          ${!['propernoun', 'figurative', 'peat'].includes(e.cls) ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
           <button class="btn small ghost" data-remove='${esc(JSON.stringify([e.word, e.cls]))}' aria-label="Remove ${esc(e.word)}">🗑️</button>
         </div>
       </article>`;
