@@ -38,5 +38,17 @@ a.tokens.forEach((t) => {
 });
 assert.strictEqual(G.inflect('awaken', 'past'), 'awakened');
 assert.strictEqual(G.inflect('warrior', 'plural'), 'warriors');
+// word parts (with a tiny pretend dictionary)
+const WP = require('../js/wordparts.js');
+const known = new Set(['petrify', 'happy', 'unhappy', 'hope', 'port', 'transport', 'comfortable']);
+(async () => {
+  const show = async (w) => (await WP.analyse(w, async (x) => known.has(x))).parts.map((p) => p.text).join(' + ');
+  assert.strictEqual(await show('petrified'), 'petr + -ify + -ed');
+  assert.strictEqual(await show('unhappiness'), 'un- + happy + -ness');
+  assert.strictEqual(await show('transportation'), 'trans- + port + -ation');
+  assert.strictEqual(await show('table'), '');
+  console.log('Word part checks passed.');
+})().catch((e) => { console.error(e); process.exit(1); });
+
 if (fails) { console.log(fails + ' word class check(s) failed'); process.exit(1); }
 console.log('All grammar checks passed (' + a.tokens.length + ' words).');

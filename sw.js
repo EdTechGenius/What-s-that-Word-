@@ -1,13 +1,14 @@
 /* Service worker: lets What's That Word? open and colour text offline.
  * App files: served from cache, refreshed in the background.
  * Dictionary/thesaurus answers: fetched live, with a cached copy as a fallback. */
-const VERSION = 'wtw-v1';
+const VERSION = 'wtw-v2';
 const SHELL = [
-  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/grammar.js', 'js/lookup.js',
+  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/grammar.js', 'js/lookup.js', 'js/wordparts.js',
   'vendor/compromise.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/apple-touch-icon.png',
+  'fonts/opendyslexic-latin-400-normal.woff2', 'fonts/opendyslexic-latin-700-normal.woff2', 'fonts/opendyslexic-latin-400-italic.woff2',
 ];
-const API_HOSTS = ['api.dictionaryapi.dev', 'api.datamuse.com'];
+const API_HOSTS = ['api.dictionaryapi.dev', 'api.datamuse.com', 'en.wiktionary.org'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', (e) => {

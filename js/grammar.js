@@ -274,6 +274,12 @@
       }
     }
 
+    // "-ed" feeling words after a being verb: "He was petrified of spiders", "She felt exhausted."
+    if (has(t, 'PastTense') && /ed$/.test(w) && prev && /^(am|is|are|was|were|be|been|being|feel|feels|felt|seem|seems|seemed|look|looks|looked|became|become|becomes|appeared|grew)$/.test(bare(prev.normal)) &&
+        (!next || endsClause(t) || /^(of|about|with|at|and|but|that|when|because)$/.test(bare(next.normal)))) {
+      return r('adjective');
+    }
+
     // verbs
     if (has(t, 'Verb') || has(t, 'Copula') || has(t, 'Modal') || has(t, 'Auxiliary')) {
       if (has(t, 'Modal')) return r('verb', 'modal');
@@ -351,6 +357,10 @@
         const c = classify(tokens, i);
         t.cls = c.cls; t.sub = c.sub; t.id = id++;
         maxS = Math.max(maxS, t.sentence);
+      });
+      tokens.forEach((t, i) => {
+        const n = tokens[i + 1];
+        if (t.cls === 'verb' && t.sub === 'auxiliary' && has(t, 'Copula') && n && n.sentence === t.sentence && n.cls === 'adjective') t.sub = 'being';
       });
       tokens.forEach((t) => { t.sentence += sentenceOffset; });
       sentenceOffset += maxS + 1;
@@ -750,6 +760,7 @@
   /** make a synonym match the form of the original word, e.g. awaken -> awoke/awakened */
   function inflect(word, form) {
     if (!form || /\s/.test(word)) return word;
+    if ((form === 'past' && /ed$/.test(word)) || (form === 'ing' && /ing$/.test(word))) return word;
     try {
       let out = '';
       if (['past', 'ing', 'present3'].includes(form)) {

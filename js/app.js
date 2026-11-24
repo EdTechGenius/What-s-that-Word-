@@ -32,7 +32,24 @@
     labels: store.get('labels', true),
     colour: true,
     size: store.get('size', 26),
+    dyslexic: store.get('dyslexic', false),
   };
+
+  function applyFont() {
+    document.body.classList.toggle('dyslexic', state.dyslexic);
+    $$('[data-font-toggle]').forEach((b) => {
+      b.setAttribute(b.getAttribute('role') === 'switch' ? 'aria-checked' : 'aria-pressed', String(state.dyslexic));
+      const l = b.querySelector('.switch-label');
+      if (l) l.textContent = state.dyslexic ? 'On' : 'Off';
+    });
+  }
+  document.addEventListener('click', (ev) => {
+    if (!ev.target.closest('[data-font-toggle]')) return;
+    state.dyslexic = !state.dyslexic;
+    store.set('dyslexic', state.dyslexic);
+    applyFont();
+    toast(state.dyslexic ? 'Dyslexia-friendly font switched on' : 'Dyslexia-friendly font switched off');
+  });
 
   // ------------------------------------------------------------ helpers
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -132,6 +149,7 @@
     else if (page === 'vocab') renderVocab(decodeURIComponent(arg || ''));
     else if (page === 'bank') renderBank();
     else renderHome();
+    applyFont();
     app.focus({ preventScroll: true });
   }
   window.addEventListener('hashchange', route);
@@ -145,6 +163,19 @@
         <p class="eyebrow">Every pupil · every text</p>
         <h1>What’s <em>that</em> word?</h1>
         <p class="lead">Explore any text word by word. See every word class in colour, find out what words mean, and collect brilliant words in your own word bank.</p>
+      </section>
+      <section class="font-option" aria-label="Reading options">
+        <div class="font-option-text">
+          <span class="font-sample" aria-hidden="true">Aa</span>
+          <div>
+            <strong>Dyslexia-friendly font</strong>
+            <span class="muted small">Switch every page to the OpenDyslexic font.</span>
+          </div>
+        </div>
+        <button class="switch" role="switch" aria-checked="${state.dyslexic}" aria-label="Dyslexia-friendly font (OpenDyslexic)" data-font-toggle>
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-label">${state.dyslexic ? 'On' : 'Off'}</span>
+        </button>
       </section>
       <section class="corners" aria-label="Choose a corner">
         <a class="corner grammar" href="#/grammar">
@@ -460,10 +491,24 @@
   }
 
   // ================================================================ VOCAB
-  const VOCAB_IDEAS = ['enormous', 'whisper', 'gloomy', 'swiftly', 'courage', 'glimmer', 'furious', 'tremble'];
+  const VOCAB_IDEAS = {
+    lower: ['enormous', 'whisper', 'gloomy', 'swiftly', 'courage', 'glimmer', 'furious', 'tremble'],
+    upper: ['petrified', 'ominous', 'meander', 'exhilarated', 'tenacious', 'luminous', 'dilapidated', 'melancholy'],
+  };
+  const LEVELS = {
+    lower: { label: 'Lower primary', emoji: '🌱', blurb: 'Clear meanings, examples and everyday synonyms.' },
+    upper: { label: 'Upper primary', emoji: '🚀', blurb: 'Deeper explanations, challenging synonyms sorted by level, word parts, word families, example sentences and a sentence challenge.' },
+  };
+  const TIERS = [
+    ['challenge', '🚀 Challenge words', 'rare and impressive'],
+    ['ambitious', '✨ Ambitious words', 'great for upgrading your writing'],
+    ['everyday', '👍 Everyday words', 'words you probably know already'],
+  ];
 
   function renderVocab(word) {
     document.title = 'Vivid Vocabulary Corner · What’s That Word?';
+    const level = store.get('level', null);
+    if (!LEVELS[level]) { renderLevelChoice(word); return; }
     const recent = store.get('recent', []);
     app.innerHTML = `
       <div class="page-head">
@@ -471,16 +516,22 @@
           <p class="eyebrow">📖 Corner 2</p>
           <h1>Vivid <em>Vocabulary</em> Corner</h1>
         </div>
+        <div class="seg level-switch" role="group" aria-label="Level">
+          ${Object.keys(LEVELS).map((l) => `<button data-level="${l}" aria-pressed="${l === level}">${LEVELS[l].emoji} ${LEVELS[l].label}</button>`).join('')}
+        </div>
       </div>
       <form class="search" id="vocab-form" role="search">
         <input id="vocab-in" type="search" placeholder="Type a word…" autocomplete="off" autocapitalize="none" spellcheck="true" aria-label="Word to look up" value="${esc(word)}">
         <button class="btn primary" type="submit">Look it up</button>
       </form>
       <div class="search-extras">
-        <div class="chips"><span class="label">Try:</span>${VOCAB_IDEAS.map((w) => `<a class="chip" href="#/vocab/${w}">${w}</a>`).join('')}</div>
+        <div class="chips"><span class="label">Try:</span>${VOCAB_IDEAS[level].map((w) => `<a class="chip" href="#/vocab/${w}">${w}</a>`).join('')}</div>
         ${recent.length ? `<div class="chips"><span class="label">Recent:</span>${recent.map((w) => `<a class="chip" href="#/vocab/${encodeURIComponent(w)}">${esc(w)}</a>`).join('')}</div>` : ''}
       </div>
       <div id="vocab-out"></div>`;
+    $$('[data-level]').forEach((b) => {
+      b.onclick = () => { store.set('level', b.dataset.level); renderVocab(word); };
+    });
     $('#vocab-form').onsubmit = (e) => {
       e.preventDefault();
       const w = window.Lookup.cleanWord($('#vocab-in').value);
@@ -488,14 +539,35 @@
       const target = '#/vocab/' + encodeURIComponent(w);
       if (location.hash === target) renderVocab(w); else location.hash = target;
     };
-    if (word) lookupWord(word);
+    if (word) (level === 'upper' ? lookupUpper : lookupWord)(word);
     else $('#vocab-in').focus();
   }
 
-  async function lookupWord(raw) {
-    const out = $('#vocab-out');
-    const word = window.Lookup.cleanWord(raw);
-    if (!word) return;
+  function renderLevelChoice(word) {
+    app.innerHTML = `
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">📖 Corner 2</p>
+          <h1>Vivid <em>Vocabulary</em> Corner</h1>
+        </div>
+      </div>
+      <p class="lead">Who is exploring words today? Choose your level. You can change it at any time.</p>
+      <div class="corners levels">
+        ${Object.keys(LEVELS).map((l) => `
+          <button class="corner level-card ${l}" data-pick="${l}">
+            <span class="corner-icon" aria-hidden="true">${LEVELS[l].emoji}</span>
+            <h2>${LEVELS[l].label}</h2>
+            <p>${esc(LEVELS[l].blurb)}</p>
+            <span class="go">Choose ${LEVELS[l].label.toLowerCase()} →</span>
+          </button>`).join('')}
+      </div>`;
+    $$('[data-pick]').forEach((b) => {
+      b.onclick = () => { store.set('level', b.dataset.pick); renderVocab(word); };
+    });
+  }
+
+  /** Look a word up (trying its base form too). Shows a message and returns null if not found. */
+  async function fetchWordInfo(word, out) {
     out.innerHTML = '<div class="loading"><span class="spinner"></span> Looking up “' + esc(word) + '”…</div>';
     let info;
     try {
@@ -507,10 +579,10 @@
         if (base) { info = await window.Lookup.define(base); if (info) info.from = word; }
       }
     } catch (e) {
-      out.innerHTML = `<div class="notice">${offlineMsg()}</div>`;
-      return;
+      if (out.isConnected) out.innerHTML = `<div class="notice">${offlineMsg()}</div>`;
+      return null;
     }
-    if (!$('#vocab-out') || out !== $('#vocab-out')) return;   // user moved on
+    if (out !== $('#vocab-out')) return null;   // user moved on
     if (!info) {
       const sug = await window.Lookup.suggest(word).catch(() => []);
       out.innerHTML = `<div class="notice">
@@ -518,28 +590,56 @@
         <p style="margin:0 0 10px">Check the spelling and try again.</p>
         ${sug.length ? `<div class="chips"><span class="label muted">Did you mean:</span>${sug.map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>` : ''}
       </div>`;
-      return;
+      return null;
     }
+    store.set('recent', [word].concat(store.get('recent', []).filter((w) => w !== word)).slice(0, 10));
+    return info;
+  }
 
-    const recent = [word].concat(store.get('recent', []).filter((w) => w !== word)).slice(0, 10);
-    store.set('recent', recent);
+  // ---- highlighting a word (and its other forms) inside a sentence
+  const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function wordForms() {
+    const set = new Set();
+    Array.from(arguments).filter(Boolean).forEach((w) => {
+      const lw = String(w).toLowerCase();
+      set.add(lw);
+      const stem = lw.replace(/(ied|ies|ed|ing|es|s|e|y)$/, '');
+      if (stem.length >= 4) set.add(stem + '*');
+    });
+    return Array.from(set);
+  }
+  function formsRegex(forms, anchored) {
+    const pats = forms.map((f) => (f.endsWith('*') ? escRe(f.slice(0, -1)) + '[a-z]*' : escRe(f))).sort((a, b) => b.length - a.length);
+    return anchored ? new RegExp(`^(${pats.join('|')})$`, 'i') : new RegExp(`\\b(${pats.join('|')})\\b`, 'gi');
+  }
+  function markWord(text, forms) {
+    const re = formsRegex(forms);
+    let html = '';
+    let last = 0;
+    String(text).replace(re, (m, g, idx) => {
+      html += esc(text.slice(last, idx)) + `<mark class="hl">${esc(m)}</mark>`;
+      last = idx + m.length;
+      return m;
+    });
+    return html + esc(text.slice(last));
+  }
+  const chipList = (list) => `<div class="chips">${list.map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>`;
 
+  // ------------------------------------------------------- lower primary
+  async function lookupWord(raw) {
+    const out = $('#vocab-out');
+    const word = window.Lookup.cleanWord(raw);
+    if (!word) return;
+    const info = await fetchWordInfo(word, out);
+    if (!info) return;
     const classes = info.meanings.map((m) => m.cls);
+    const forms = wordForms(info.word, info.from);
     out.innerHTML = `
-      <div class="word-head">
-        <div>
-          <h2>${esc(info.word)}</h2>
-          ${info.phonetic ? `<div class="phonetic">${esc(info.phonetic)}</div>` : ''}
-          ${info.from ? `<div class="small muted">You searched for “${esc(info.from)}”, which comes from “${esc(info.word)}”.</div>` : ''}
-        </div>
-        <div class="actions">
-          <button class="btn" id="say-word">🔊 Hear it</button>
-        </div>
-      </div>
+      ${wordHead(info)}
       <div class="can-be"><span class="muted">“${esc(info.word)}” can be ${classes.length > 1 ? 'used as' : 'a'}:</span> ${classes.map((c) => badge(c)).join(' ')}</div>
       <div class="vocab-grid">
         <div id="meanings">
-          ${info.meanings.map((m, i) => meaningCard(info, m, i)).join('')}
+          ${info.meanings.map((m) => meaningCard(info, m, forms)).join('')}
         </div>
         <aside class="card thesaurus" id="thesaurus">
           <h3>🔁 Thesaurus</h3>
@@ -547,21 +647,13 @@
         </aside>
       </div>
       <p class="source">Definitions from the Free Dictionary API (Wiktionary, CC BY-SA). Thesaurus from Datamuse.</p>`;
-
-    $('#say-word').onclick = () => {
-      if (info.audio) { const a = new Audio(info.audio); a.play().catch(() => speak(info.word)); } else speak(info.word);
-    };
-    $$('[data-say]', out).forEach((b) => { b.onclick = () => speak(b.dataset.say); });
-    $$('.more-defs', out).forEach((b) => {
-      b.onclick = () => { b.previousElementSibling.querySelectorAll('[hidden]').forEach((li) => { li.hidden = false; }); b.remove(); };
-    });
+    wireWordPage(info, out);
 
     window.Lookup.thesaurus(info.word).then((t) => {
       const el = $('#thesaurus');
       if (!el) return;
       const groups = Object.keys(t.synonyms).filter((c) => c !== 'other').sort((a, b) => classes.indexOf(a) - classes.indexOf(b));
       if (t.synonyms.other && !groups.length) groups.push('other');
-      const chipList = (list) => `<div class="chips">${list.map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>`;
       let html = '<h3>🔁 Thesaurus</h3>';
       if (groups.length) {
         html += groups.map((c) => `<div class="group"><h4>${badge(c, c === 'other' ? 'Similar words' : `Similar ${CLASSES[c].label.toLowerCase()}s`)}</h4>${chipList(t.synonyms[c].slice(0, 18))}</div>`).join('');
@@ -582,7 +674,37 @@
     });
   }
 
-  function meaningCard(info, m, idx) {
+  function wordHead(info, extra) {
+    return `
+      <div class="word-head">
+        <div>
+          <h2>${esc(info.word)}</h2>
+          ${info.phonetic ? `<div class="phonetic">${esc(info.phonetic)}</div>` : ''}
+          ${info.from ? `<div class="small muted">You searched for “${esc(info.from)}”, which comes from “${esc(info.word)}”.</div>` : ''}
+        </div>
+        ${extra || ''}
+        <div class="actions">
+          <button class="btn" id="say-word">🔊 Hear it</button>
+        </div>
+      </div>`;
+  }
+
+  function wireWordPage(info, out) {
+    $('#say-word').onclick = () => {
+      if (info.audio) { const a = new Audio(info.audio); a.play().catch(() => speak(info.word)); } else speak(info.word);
+    };
+    out.addEventListener('click', (ev) => {
+      const say = ev.target.closest('[data-say]');
+      if (say) speak(say.dataset.say);
+      const more = ev.target.closest('.more-defs');
+      if (more) {
+        more.previousElementSibling.querySelectorAll('[hidden]').forEach((li) => { li.hidden = false; });
+        more.remove();
+      }
+    });
+  }
+
+  function meaningCard(info, m, forms) {
     const defs = m.definitions;
     const shown = 3;
     const entry = {
@@ -598,14 +720,281 @@
         </header>
         ${m.cls !== 'other' ? `<p class="what">${clsInfo(m.cls).emoji} ${esc(article(label))} ${esc(label.toLowerCase())}: ${esc(clsInfo(m.cls).kid)}</p>` : ''}
         <ol class="defs">
-          ${defs.map((d, i) => `<li ${i >= shown ? 'hidden' : ''}>${esc(d.definition)}${d.example ? `<span class="ex">“${esc(d.example)}” <button class="icon-btn" data-say="${esc(d.example)}" aria-label="Hear the example">🔊</button></span>` : ''}</li>`).join('')}
+          ${defs.map((d, i) => `<li ${i >= shown ? 'hidden' : ''}>${esc(d.definition)}${d.example ? `<span class="ex">“${markWord(d.example, forms)}” <button class="icon-btn" data-say="${esc(d.example)}" aria-label="Hear the example">🔊</button></span>` : ''}</li>`).join('')}
         </ol>
         ${defs.length > shown ? `<button class="btn small ghost more-defs">Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
-        ${m.synonyms.length ? `<p class="sub-h">Synonyms</p><div class="chips">${m.synonyms.slice(0, 12).map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>` : ''}
-        ${m.antonyms.length ? `<p class="sub-h">Opposites</p><div class="chips">${m.antonyms.slice(0, 8).map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>` : ''}
+        ${m.synonyms.length ? `<p class="sub-h">Synonyms</p>${chipList(m.synonyms.slice(0, 12))}` : ''}
+        ${m.antonyms.length ? `<p class="sub-h">Opposites</p>${chipList(m.antonyms.slice(0, 8))}` : ''}
       </section>`;
   }
   function article(s) { return /^[aeiou]/i.test(s) ? 'An' : 'A'; }
+
+  // ------------------------------------------------------- upper primary
+  // "simple past tense of petrify" -> { base: 'petrify', form: 'past' }
+  function inflectionHint(m) {
+    for (const d of m.definitions.slice(0, 2)) {
+      const r = /(simple past|past tense|past participle|present participle|plural|third-person singular)[^.;]*? of ([a-z-]+)/i.exec(d.definition);
+      if (r) {
+        const kind = r[1].toLowerCase();
+        return { base: r[2].toLowerCase(), form: kind === 'plural' ? 'plural' : kind === 'present participle' ? 'ing' : kind.startsWith('third') ? 'present3' : 'past' };
+      }
+    }
+    return null;
+  }
+
+  function conjugate(verb) {
+    try {
+      return window.nlp(verb).tag('Infinitive').verbs().conjugate()[0] || null;
+    } catch (e) { return null; }
+  }
+
+  function upperTip(m, word, forms) {
+    const hl = (t) => markWord(t, forms);
+    if (m.cls === 'adjective') {
+      return `Use it <strong>before a noun</strong> (“${hl(`a ${word} face`)}”) or <strong>after a verb</strong> such as <em>was</em>, <em>felt</em> or <em>looked</em> (“${hl(`She felt ${word}.`)}”).`;
+    }
+    if (m.cls === 'noun') {
+      return `Put a <strong>determiner</strong> in front (“${hl(`the ${word}`)}”, “${hl(`a ${word}`)}”) and add an <strong>adjective</strong> to make it more vivid.`;
+    }
+    if (m.cls === 'verb') {
+      const hint = inflectionHint(m);
+      const c = conjugate(hint ? hint.base : word);
+      if (c && c.PastTense && c.PresentTense) {
+        return `Change the tense: <strong>today</strong> it ${esc(c.PresentTense)} · <strong>yesterday</strong> it ${esc(c.PastTense)} · <strong>right now</strong> it is ${esc(c.Gerund || '')}.`;
+      }
+      return `It is a verb, so it changes with time (tense).`;
+    }
+    if (m.cls === 'adverb') {
+      return `It tells you how, when, where or how often. Try it at the <strong>start of a sentence</strong> followed by a comma to make a fronted adverbial: “${hl(`${cap(word)}, the door creaked open.`)}”`;
+    }
+    return '';
+  }
+
+  function upperMeaningCard(info, m, forms) {
+    const defs = m.definitions;
+    const shown = 6;
+    const examples = defs.filter((d) => d.example).map((d) => d.example);
+    const entry = {
+      word: info.word, cls: m.cls, definition: defs[0].definition, example: examples[0] || '',
+      synonyms: m.synonyms.slice(0, 6),
+    };
+    const label = m.cls === 'other' ? cap(m.pos) : clsInfo(m.cls).label;
+    const tip = upperTip(m, info.word, forms);
+    return `
+      <section class="card meaning-card c-${m.cls}">
+        <header>
+          <h3 style="margin:0">${badge(m.cls, `As ${article(label).toLowerCase()} ${label.toLowerCase()}`)}</h3>
+          ${bankButton(entry, { small: true })}
+        </header>
+        ${m.cls !== 'other' ? `<p class="what">${clsInfo(m.cls).emoji} ${esc(article(label))} ${esc(label.toLowerCase())}: ${esc(clsInfo(m.cls).kid)}</p>` : ''}
+        <p class="sub-h">📖 Meanings</p>
+        <ol class="defs">
+          ${defs.map((d, i) => `<li ${i >= shown ? 'hidden' : ''}>${esc(d.definition)}</li>`).join('')}
+        </ol>
+        ${defs.length > shown ? `<button class="btn small ghost more-defs">Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
+        <p class="sub-h">📌 Example sentences</p>
+        <ul class="examples">
+          ${examples.slice(0, 3).map((e) => exampleItem(e, forms)).join('')}
+        </ul>
+        <div class="ex-slot" data-cls="${m.cls}" data-have="${Math.min(examples.length, 3)}">
+          ${examples.length < 3 ? '<div class="loading small"><span class="spinner"></span> Finding example sentences…</div>' : ''}
+        </div>
+        ${tip ? `<p class="tip">💡 <strong>Grammar tip:</strong> ${tip}</p>` : ''}
+      </section>`;
+  }
+  function exampleItem(text, forms) {
+    return `<li><span>${markWord(text, forms)}</span><button class="icon-btn" data-say="${esc(text)}" aria-label="Hear the example">🔊</button></li>`;
+  }
+
+  async function lookupUpper(raw) {
+    const out = $('#vocab-out');
+    const word = window.Lookup.cleanWord(raw);
+    if (!word) return;
+    const info = await fetchWordInfo(word, out);
+    if (!info) return;
+    const classes = info.meanings.map((m) => m.cls);
+    const forms = wordForms(info.word, info.from);
+    const alive = () => out.isConnected && out === $('#vocab-out');
+
+    out.innerHTML = `
+      ${wordHead(info, '<div class="meter" id="meter" hidden></div>')}
+      <div class="can-be"><span class="muted">“${esc(info.word)}” can be ${classes.length > 1 ? 'used as' : 'a'}:</span> ${classes.map((c) => badge(c)).join(' ')}</div>
+      <div class="vocab-grid">
+        <div>
+          ${info.meanings.map((m) => upperMeaningCard(info, m, forms)).join('')}
+          <section class="card detective" id="detective">
+            <h3>🕵️ Word detective</h3>
+            <div class="loading"><span class="spinner"></span> Looking for clues…</div>
+          </section>
+          <section class="card your-turn">
+            <h3>✍️ Your turn</h3>
+            <p style="margin-top:0">Write your own sentence using <strong>${esc(info.from || info.word)}</strong>. The grammar checker will tell you which word class you used it as.</p>
+            <textarea id="my-sentence" rows="3" placeholder="Write your sentence here…" spellcheck="true"></textarea>
+            <div class="input-actions">
+              <button class="btn primary" id="check-sentence">✅ Check my sentence</button>
+              <button class="btn" id="hear-sentence">🔊 Hear it</button>
+            </div>
+            <div id="sentence-result" aria-live="polite"></div>
+          </section>
+        </div>
+        <aside class="card thesaurus upper" id="thesaurus">
+          <h3>🔁 Thesaurus</h3>
+          <div class="loading"><span class="spinner"></span> Finding challenging words…</div>
+        </aside>
+      </div>
+      <p class="source">Definitions and example sentences from the Free Dictionary API and Wiktionary (CC BY-SA). Thesaurus, word levels and word families from Datamuse.</p>`;
+    wireWordPage(info, out);
+    wireYourTurn(info, classes, forms);
+
+    // how ambitious is this word?
+    window.Lookup.frequency(info.word).then((f) => {
+      const el = $('#meter');
+      if (!alive() || f == null || !el) return;
+      const tier = window.Lookup.tierOf(f);
+      const idx = { everyday: 1, ambitious: 2, challenge: 3 }[tier];
+      const name = { everyday: '👍 Everyday word', ambitious: '✨ Ambitious word', challenge: '🚀 Challenge word' }[tier];
+      el.hidden = false;
+      el.innerHTML = `<span class="meter-label">Word level</span>
+        <span class="meter-bar" aria-hidden="true">${[1, 2, 3].map((i) => `<span class="${i <= idx ? 'on' : ''}"></span>`).join('')}</span>
+        <strong>${name}</strong>`;
+      el.title = `Used about ${f < 1 ? 'less than once' : Math.round(f) + ' times'} in every million words`;
+    }).catch(() => {});
+
+    // more example sentences from Wiktionary
+    window.Lookup.examples(info.word).catch(() => ({})).then((ex) => {
+      if (!alive()) return;
+      $$('.ex-slot', out).forEach((slot) => {
+        const have = +slot.dataset.have;
+        const existing = $$('.examples li span', slot.parentElement).map((s) => s.textContent);
+        const extra = (ex[slot.dataset.cls] || [])
+          .filter((t) => formsRegex(forms).test(t) && !existing.includes(t))
+          .slice(0, Math.max(0, 3 - have));
+        if (extra.length) $('.examples', slot.parentElement).insertAdjacentHTML('beforeend', extra.map((e) => exampleItem(e, forms)).join(''));
+        slot.innerHTML = (have + extra.length) ? '' : '<p class="muted small" style="margin:0">No example sentence found for this meaning. Can you write one in <strong>Your turn</strong> below?</p>';
+      });
+    });
+
+    upperThesaurus(info, classes, alive);
+    upperDetective(info, alive);
+  }
+
+  async function upperThesaurus(info, classes, alive) {
+    const targets = info.meanings.filter((m) => THESAURUS_CLASSES.includes(m.cls));
+    const extrasP = window.Lookup.thesaurus(info.word).catch(() => null);
+    const groups = await Promise.all(targets.map(async (m) => {
+      const hint = inflectionHint(m);
+      const base = hint ? hint.base : info.word;
+      let list = await window.Lookup.richSynonyms(base, m.cls, {
+        extra: m.synonyms, bases: !hint && info.from ? [info.from] : [],
+      }).catch(() => []);
+      if (hint) list = list.map((x) => Object.assign({}, x, { word: window.Grammar.inflect(x.word, hint.form) }));
+      const seen = new Set([info.word]);
+      list = list.filter((x) => !seen.has(x.word) && seen.add(x.word));
+      return { m, list, hint };
+    }));
+    const t = await extrasP;
+    const el = $('#thesaurus');
+    if (!alive() || !el) return;
+
+    const tierChips = (items, tier) => `<div class="chips">${items.map((x) => `<a class="chip tier-${tier}" href="#/vocab/${encodeURIComponent(x.word)}">${esc(x.word)}</a>`).join('')}</div>`;
+    let html = '<h3>🔁 Thesaurus</h3><p class="small muted" style="margin-top:-4px">Synonyms sorted from the most challenging to the most everyday. Tap one to explore it.</p>';
+    groups.forEach(({ m, list, hint }) => {
+      const label = clsInfo(m.cls).label.toLowerCase();
+      html += `<div class="group"><h4>${badge(m.cls, `Synonyms as ${/^[aeiou]/.test(label) ? 'an' : 'a'} ${label}`)}</h4>`;
+      if (hint) html += `<p class="small muted" style="margin:0 0 8px">Synonyms for “${esc(hint.base)}”, changed to match “${esc(info.word)}”.</p>`;
+      if (!list.length) {
+        html += `<p class="muted small">No synonyms found for it as ${/^[aeiou]/.test(label) ? 'an' : 'a'} ${label}.</p>`;
+      } else {
+        TIERS.forEach(([tier, title, note]) => {
+          const items = list.filter((x) => x.tier === tier).slice(0, 14);
+          if (items.length) html += `<p class="tier-h">${title} <span class="muted">– ${note}</span></p>${tierChips(items, tier)}`;
+        });
+      }
+      html += '</div>';
+    });
+    if (!groups.length) html += '<p class="muted">This kind of word doesn’t really have synonyms – it does an important job in the sentence!</p>';
+    if (t && t.antonyms.length) html += `<div class="group"><h4>↔️ Opposites (antonyms)</h4>${chipList(t.antonyms.slice(0, 16))}</div>`;
+    if (t && t.describedBy.length && classes.includes('noun')) {
+      html += `<div class="group"><h4>🎨 Adjectives to describe a ${esc(info.word)}</h4>${chipList(t.describedBy)}</div>`;
+    }
+    if (t && t.describes.length && classes.includes('adjective')) {
+      html += `<div class="group"><h4>🧩 Things that can be ${esc(info.word)}</h4>${chipList(t.describes.slice(0, 16))}</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  async function upperDetective(info, alive) {
+    const isWord = (w, min) => window.Lookup.isWord(w, min == null ? 0.3 : min).catch(() => false);
+    const [parts, phr] = await Promise.all([
+      window.WordParts.analyse(info.word, isWord).catch(() => ({ parts: [], base: info.word })),
+      window.Lookup.phrases(info.word).catch(() => []),
+    ]);
+    const famBase = parts.base && parts.base.length >= 4 ? parts.base : info.word;
+    const fam = await window.Lookup.family(famBase).catch(() => []);
+    const el = $('#detective');
+    if (!alive() || !el) return;
+    let html = '<h3>🕵️ Word detective</h3>';
+    if (parts.parts.length) {
+      html += `<p class="sub-h">🧩 Word parts</p>
+        <div class="parts">${parts.parts.map((p) => `
+          <div class="part part-${p.type}">
+            <span class="pt">${esc(p.text)}</span>
+            <span class="pk">${{ prefix: 'prefix', suffix: 'suffix', root: 'root', base: 'base word' }[p.type]}</span>
+            ${p.meaning && p.type !== 'base' ? `<span class="pm">${esc(p.meaning)}${p.origin ? ` <em>(${esc(p.origin)})</em>` : ''}</span>` : ''}
+          </div>`).join('<span class="plus" aria-hidden="true">+</span>')}</div>
+        <p class="small muted">Word parts are clues to what a word means, but they don’t always tell the whole story!</p>`;
+    }
+    const famOthers = fam.filter((x) => x.word !== info.word);
+    if (famOthers.length) {
+      html += `<p class="sub-h">👪 Word family <span class="muted small" style="font-weight:400">– words built from the same root</span></p>
+        <div class="chips">${famOthers.map((x) => `<a class="chip" href="#/vocab/${encodeURIComponent(x.word)}">${x.cls !== 'other' ? `<span class="swatch c-${x.cls}" title="${esc(clsInfo(x.cls).label)}"></span>` : ''}${esc(x.word)}</a>`).join('')}</div>`;
+    }
+    if (phr.length) {
+      html += `<p class="sub-h">🔗 Often found together</p>
+        <div class="chips">${phr.map((p) => `<span class="chip phrase">${markWord(p.text, [info.word])}</span>`).join('')}</div>`;
+    }
+    if (!parts.parts.length && !famOthers.length && !phr.length) html += '<p class="muted">No extra clues found for this word.</p>';
+    el.innerHTML = html;
+  }
+
+  function wireYourTurn(info, classes, forms) {
+    const ta = $('#my-sentence');
+    const res = $('#sentence-result');
+    $('#hear-sentence').onclick = () => { if (ta.value.trim()) speak(ta.value.trim()); else toast('Write a sentence first!'); };
+    $('#check-sentence').onclick = () => {
+      const text = ta.value.trim();
+      if (!text) { toast('Write a sentence first!'); ta.focus(); return; }
+      const analysis = window.Grammar.analyse(text);
+      const exact = formsRegex(forms, true);
+      const tok = analysis.tokens.find((t) => exact.test(t.text.replace(/[’']s$/, '')));
+      const tips = [];
+      if (!/^["'“‘(]*[A-Z]/.test(text)) tips.push('Remember to start your sentence with a capital letter.');
+      if (!/[.!?]["'”’)]*$/.test(text)) tips.push('Remember to end your sentence with a full stop, question mark or exclamation mark.');
+      const tipHtml = tips.length ? `<ul class="tips">${tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
+      if (!tok) {
+        res.innerHTML = `<div class="feedback try">🔎 I can’t spot “${esc(info.from || info.word)}” in your sentence yet. Check the spelling and try again!</div>${tipHtml}`;
+        return;
+      }
+      const ex = window.Grammar.explain(analysis, tok);
+      const label = clsInfo(tok.cls).label.toLowerCase();
+      const a = /^[aeiou]/.test(label) ? 'an' : 'a';
+      const sentenceHtml = `<div class="context">${highlightInSentence(text, tok.text, tok.cls)}</div>`;
+      if (classes.includes(tok.cls) || (tok.cls === 'propernoun' && classes.includes('noun'))) {
+        const meaning = info.meanings.find((m) => m.cls === tok.cls);
+        const entry = {
+          word: info.word, cls: tok.cls, sentence: text,
+          definition: meaning ? meaning.definitions[0].definition : '', example: '', synonyms: meaning ? meaning.synonyms.slice(0, 6) : [],
+        };
+        res.innerHTML = `<div class="feedback good">🎉 Brilliant! You used “${esc(tok.text)}” as ${a} <strong>${esc(label)}</strong>. ${esc(ex.reasons[0] || '')}</div>
+          ${sentenceHtml}${tipHtml}
+          <div style="margin-top:10px">${bankButton(entry, { small: true })}</div>`;
+      } else {
+        const list = classes.filter((c) => c !== 'other').map((c) => clsInfo(c).label.toLowerCase());
+        res.innerHTML = `<div class="feedback try">🤔 The grammar checker thinks you used “${esc(tok.text)}” as ${a} <strong>${esc(label)}</strong>, but the dictionary lists it as: ${esc(list.join(', '))}. Have another look, or talk about it with your teacher. The checker can make mistakes too!</div>
+          ${sentenceHtml}${tipHtml}`;
+      }
+    };
+  }
 
   // ================================================================ BANK
   let bankFilter = '';
@@ -694,6 +1083,7 @@
 
   // ------------------------------------------------------------ start
   updateCount();
+  applyFont();
   route();
 
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
