@@ -58,6 +58,16 @@ assert.strictEqual(G.inflect('warrior', 'plural'), 'warriors');
   console.log('Sample text checks passed.');
 }
 
+// Words fetched online use British spellings
+{
+  const L = require('../js/lookup.js').Lookup;
+  const want = { fossilized: 'fossilised', realized: 'realised', paralyze: 'paralyse', color: 'colour', gray: 'grey',
+    canceled: 'cancelled', emphasize: 'emphasise', size: 'size', prize: 'prize', seize: 'seize', capsize: 'capsize' };
+  for (const [us, uk] of Object.entries(want)) assert.strictEqual(L.british(us), uk, us);
+  assert.strictEqual(L.britishText('The gray stone was fossilized.'), 'The grey stone was fossilised.');
+  console.log('British spelling checks passed.');
+}
+
 // Word forms: never invent words (audit: "petrifiedded", "pept", "gladest", "more enormous")
 const W = require('../js/wordforms.js');
 const VERBS = {

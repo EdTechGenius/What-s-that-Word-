@@ -684,16 +684,16 @@
       if (t.synonyms.other && !groups.length) groups.push('other');
       let html = '<h3>🔁 Thesaurus</h3>';
       if (groups.length) {
-        html += groups.map((c) => `<div class="group"><h4>${badge(c, c === 'other' ? 'Similar words' : `Similar ${CLASSES[c].label.toLowerCase()}s`)}</h4>${chipList(t.synonyms[c].slice(0, 18))}</div>`).join('');
+        html += groups.map((c) => `<div class="group"><h4>${badge(c, c === 'other' ? 'Similar words' : `Similar ${CLASSES[c].label.toLowerCase()}s`)}</h4>${chipList(t.synonyms[c].slice(0, 8))}</div>`).join('');
       } else {
         html += '<p class="muted">No synonyms found for this word.</p>';
       }
-      if (t.antonyms.length) html += `<div class="group"><h4>↔️ Opposites (antonyms)</h4>${chipList(t.antonyms.slice(0, 12))}</div>`;
+      if (t.antonyms.length) html += `<div class="group"><h4>↔️ Opposites (antonyms)</h4>${chipList(t.antonyms.slice(0, 6))}</div>`;
       if (t.describedBy.length && classes.includes('noun')) {
-        html += `<div class="group"><h4>✨ Adjectives to describe a ${esc(info.word)}</h4>${chipList(t.describedBy)}</div>`;
+        html += `<div class="group"><h4>✨ Adjectives to describe a ${esc(info.word)}</h4>${chipList(t.describedBy.slice(0, 8))}</div>`;
       }
       if (t.describes.length && classes.includes('adjective')) {
-        html += `<div class="group"><h4>🧩 Things that can be ${esc(info.word)}</h4>${chipList(t.describes.slice(0, 12))}</div>`;
+        html += `<div class="group"><h4>🧩 Things that can be ${esc(info.word)}</h4>${chipList(t.describes.slice(0, 8))}</div>`;
       }
       el.innerHTML = html;
     }).catch(() => {
@@ -733,8 +733,8 @@
   }
 
   function meaningCard(info, m, forms) {
-    const defs = m.definitions;
-    const shown = 3;
+    const defs = m.definitions.slice(0, 4);
+    const shown = 1;
     const entry = {
       word: info.word, cls: m.cls, definition: defs[0].definition, example: (defs.find((d) => d.example) || {}).example || '',
       synonyms: m.synonyms.slice(0, 6),
@@ -750,9 +750,10 @@
         <ol class="defs">
           ${defs.map((d, i) => `<li ${i >= shown ? 'hidden' : ''}>${esc(d.definition)}${d.example ? `<span class="ex">“${markWord(d.example, forms)}” <button class="icon-btn" data-say="${esc(d.example)}" aria-label="Hear the example">🔊</button></span>` : ''}</li>`).join('')}
         </ol>
-        ${defs.length > shown ? `<button class="btn small ghost more-defs">Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
-        ${m.synonyms.length ? `<p class="sub-h">Synonyms</p>${chipList(m.synonyms.slice(0, 12))}` : ''}
-        ${m.antonyms.length ? `<p class="sub-h">Opposites</p>${chipList(m.antonyms.slice(0, 8))}` : ''}
+        ${defs.length > shown ? `<button class="btn small ghost more-defs">➕ Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
+        ${defs.slice(0, shown).some((d) => d.example) ? '' : '<p class="muted small" style="margin:0 0 8px">No example sentence for this meaning yet. Can you think of one?</p>'}
+        ${m.synonyms.length ? `<p class="sub-h">Synonyms</p>${chipList(m.synonyms.slice(0, 8))}` : ''}
+        ${m.antonyms.length ? `<p class="sub-h">Opposites</p>${chipList(m.antonyms.slice(0, 6))}` : ''}
       </section>`;
   }
   function article(s) { return /^[aeiou]/i.test(s) ? 'An' : 'A'; }
@@ -790,8 +791,8 @@
   }
 
   function upperMeaningCard(info, m, forms) {
-    const defs = m.definitions;
-    const shown = 6;
+    const defs = m.definitions.slice(0, 6);
+    const shown = 2;
     const examples = defs.filter((d) => d.example).map((d) => d.example);
     const entry = {
       word: info.word, cls: m.cls, definition: defs[0].definition, example: examples[0] || '',
@@ -810,13 +811,13 @@
         <ol class="defs">
           ${defs.map((d, i) => `<li ${i >= shown ? 'hidden' : ''}>${esc(d.definition)}</li>`).join('')}
         </ol>
-        ${defs.length > shown ? `<button class="btn small ghost more-defs">Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
+        ${defs.length > shown ? `<button class="btn small ghost more-defs">➕ Show ${defs.length - shown} more meaning${defs.length - shown === 1 ? '' : 's'}</button>` : ''}
         <p class="sub-h">📌 Example sentences</p>
         <ul class="examples">
-          ${examples.slice(0, 3).map((e) => exampleItem(e, forms)).join('')}
+          ${examples.slice(0, 2).map((e) => exampleItem(e, forms)).join('')}
         </ul>
-        <div class="ex-slot" data-cls="${m.cls}" data-have="${Math.min(examples.length, 3)}">
-          ${examples.length < 3 ? '<div class="loading small"><span class="spinner"></span> Finding example sentences…</div>' : ''}
+        <div class="ex-slot" data-cls="${m.cls}" data-have="${Math.min(examples.length, 2)}">
+          ${examples.length < 2 ? '<div class="loading small"><span class="spinner"></span> Finding example sentences…</div>' : ''}
         </div>
         ${tip ? `<p class="tip">💡 <strong>Grammar tip:</strong> ${tip}</p>` : ''}
       </section>`;
@@ -887,7 +888,7 @@
         const existing = $$('.examples li span', slot.parentElement).map((s) => s.textContent);
         const extra = (ex[slot.dataset.cls] || [])
           .filter((t) => formsRegex(forms).test(t) && !existing.includes(t))
-          .slice(0, Math.max(0, 3 - have));
+          .slice(0, Math.max(0, 2 - have));
         if (extra.length) $('.examples', slot.parentElement).insertAdjacentHTML('beforeend', extra.map((e) => exampleItem(e, forms)).join(''));
         slot.innerHTML = (have + extra.length) ? '' : '<p class="muted small" style="margin:0">No example sentence found for this meaning. Can you write one in <strong>Your turn</strong> below?</p>';
       });
@@ -925,19 +926,19 @@
         html += `<p class="muted small">No synonyms found for it as ${/^[aeiou]/.test(label) ? 'an' : 'a'} ${label}.</p>`;
       } else {
         TIERS.forEach(([tier, title, note]) => {
-          const items = list.filter((x) => x.tier === tier).slice(0, 14);
+          const items = list.filter((x) => x.tier === tier).slice(0, 8);
           if (items.length) html += `<p class="tier-h">${title} <span class="muted">– ${note}</span></p>${tierChips(items, tier)}`;
         });
       }
       html += '</div>';
     });
     if (!groups.length) html += '<p class="muted">This kind of word doesn’t really have synonyms – it does an important job in the sentence!</p>';
-    if (t && t.antonyms.length) html += `<div class="group"><h4>↔️ Opposites (antonyms)</h4>${chipList(t.antonyms.slice(0, 16))}</div>`;
+    if (t && t.antonyms.length) html += `<div class="group"><h4>↔️ Opposites (antonyms)</h4>${chipList(t.antonyms.slice(0, 8))}</div>`;
     if (t && t.describedBy.length && classes.includes('noun')) {
-      html += `<div class="group"><h4>🎨 Adjectives to describe a ${esc(info.word)}</h4>${chipList(t.describedBy)}</div>`;
+      html += `<div class="group"><h4>🎨 Adjectives to describe a ${esc(info.word)}</h4>${chipList(t.describedBy.slice(0, 8))}</div>`;
     }
     if (t && t.describes.length && classes.includes('adjective')) {
-      html += `<div class="group"><h4>🧩 Things that can be ${esc(info.word)}</h4>${chipList(t.describes.slice(0, 16))}</div>`;
+      html += `<div class="group"><h4>🧩 Things that can be ${esc(info.word)}</h4>${chipList(t.describes.slice(0, 8))}</div>`;
     }
     el.innerHTML = html;
   }

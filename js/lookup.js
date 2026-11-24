@@ -28,7 +28,10 @@
     const p = fetch(url, { headers: { Accept: 'application/json' } }).then(async (res) => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+      const data = await res.json();
+      // Datamuse word lists: use British spellings
+      if (Array.isArray(data) && url.startsWith(MUSE)) data.forEach((x) => { if (x && x.word) x.word = british(x.word); });
+      return data;
     });
     memo.set(url, p);
     try { return await p; } catch (e) { memo.delete(url); throw e; }
@@ -85,7 +88,40 @@
   }
 
   function tidy(s) {
-    return String(s).replace(/\s+/g, ' ').trim();
+    return britishText(String(s).replace(/\s+/g, ' ').trim());
+  }
+
+  // ---- British spellings for words and definitions that come from American sources
+  const US_UK = {
+    color: 'colour', colors: 'colours', colored: 'coloured', colorful: 'colourful', favorite: 'favourite',
+    favorites: 'favourites', behavior: 'behaviour', honor: 'honour', humor: 'humour', neighbor: 'neighbour',
+    neighbors: 'neighbours', flavor: 'flavour', harbor: 'harbour', labor: 'labour', rumor: 'rumour', odor: 'odour',
+    vapor: 'vapour', armor: 'armour', valor: 'valour', vigor: 'vigour', glamor: 'glamour', center: 'centre',
+    centers: 'centres', theater: 'theatre', gray: 'grey', grayish: 'greyish', mold: 'mould', moldy: 'mouldy',
+    plow: 'plough', pajamas: 'pyjamas', aluminum: 'aluminium', jewelry: 'jewellery', mom: 'mum', fiber: 'fibre',
+    defense: 'defence', offense: 'offence', cozy: 'cosy', skeptical: 'sceptical', somber: 'sombre', meager: 'meagre',
+    traveled: 'travelled', traveling: 'travelling', traveler: 'traveller', canceled: 'cancelled', labeled: 'labelled',
+    modeled: 'modelled', marvelous: 'marvellous', woolen: 'woollen', fueled: 'fuelled', quarreled: 'quarrelled',
+    leveled: 'levelled', signaled: 'signalled', jeweled: 'jewelled', catalog: 'catalogue', analog: 'analogue',
+    gotten: 'got', airplane: 'aeroplane', candor: 'candour', rancor: 'rancour', savior: 'saviour', savor: 'savour',
+    savory: 'savoury', splendor: 'splendour', tumor: 'tumour', clamor: 'clamour', ardor: 'ardour', fervor: 'fervour',
+  };
+  const KEEP_IZE = /^(size|prize|maize|baize|seize|assize|capsize|downsize|oversize|undersize|outsize|resize|upsize|supersize)$/;
+  /** One word: American -> British spelling (fossilized -> fossilised, color -> colour). */
+  function british(word) {
+    const w = String(word);
+    const low = w.toLowerCase();
+    let out = US_UK[low];
+    if (!out) {
+      const m = /^([a-z]{3,})(iz|yz)(e|es|ed|ing|ation|ations|er|ers)$/.exec(low);
+      if (m && !KEEP_IZE.test(m[1] + m[2] + 'e')) out = m[1] + (m[2] === 'iz' ? 'is' : 'ys') + m[3];
+    }
+    if (!out) return w;
+    if (w === w.toUpperCase() && w.length > 1) return out.toUpperCase();
+    return /^[A-Z]/.test(w) ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+  }
+  function britishText(text) {
+    return String(text).replace(/[A-Za-z]+/g, (w) => british(w));
   }
   function addUnique(arr, s) {
     const v = tidy(s);
@@ -319,7 +355,7 @@
   }
 
   root.Lookup = {
-    define, defineAs, synonyms, thesaurus, suggest, cleanWord, POS_MAP,
+    define, defineAs, synonyms, thesaurus, suggest, cleanWord, POS_MAP, british, britishText,
     frequency, isWord, tierOf, richSynonyms, phrases, family, examples,
   };
 })(typeof self !== 'undefined' ? self : this);
