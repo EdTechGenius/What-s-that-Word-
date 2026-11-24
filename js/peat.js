@@ -13,10 +13,10 @@
   'use strict';
 
   const SETS = {
-    red: { label: 'Red set', colour: '#C92A2A', soft: '#FFF5F5' },
-    lightblue: { label: 'Light blue set', colour: '#0B7285', soft: '#E3FAFC' },
-    blue: { label: 'Blue set', colour: '#1864AB', soft: '#E7F5FF' },
-    green: { label: 'Green set', colour: '#237032', soft: '#EBFBEE' },
+    red: { label: 'Red set', blurb: 'starter sentences', colour: '#C92A2A', soft: '#FFF5F5' },
+    lightblue: { label: 'Light blue set', blurb: 'describing and -ly words', colour: '#0B7285', soft: '#E3FAFC' },
+    blue: { label: 'Blue set', blurb: 'new ways to start and build sentences', colour: '#1864AB', soft: '#E7F5FF' },
+    green: { label: 'Green set', blurb: 'expert sentences with clever punctuation', colour: '#237032', soft: '#EBFBEE' },
   };
 
   const EMOTIONS = new Set(('desperate terrified anxious nervous furious delighted excited exhausted frightened worried angry ' +
@@ -45,6 +45,7 @@
     // ------------------------------------------------------------------ red
     {
       id: '2a', name: '2A sentences', set: 'red',
+      plain: 'Two describing words before a thing.',
       formula: '<b>adjective</b>, <b>adjective</b> noun',
       what: 'A 2A sentence has <strong>two adjectives before a noun</strong>, with a comma between them. You can have two pairs in the same sentence!',
       parts: ['adjective', 'comma', 'adjective', 'noun'],
@@ -64,6 +65,7 @@
     },
     {
       id: 'simile', name: '…as a / …like a', set: 'red',
+      plain: 'Compare one thing to another using “as” or “like”.',
       formula: '… <b>as</b> ___ <b>as a</b> … / … <b>like a</b> …',
       what: 'Similes contain <strong>“…as a…”</strong> or <strong>“…like a…”</strong>. They compare one thing to another.',
       parts: ['thing being described', 'as … as a / like a', 'what it is compared to'],
@@ -80,6 +82,7 @@
     },
     {
       id: 'boys', name: ', BOYS sentences', set: 'red',
+      plain: 'Join two ideas with but, or, yet or so.',
       formula: 'first part<b>, but / or / yet / so</b> second part',
       what: 'BOYS sentences have two parts joined by a comma and one of the conjunctions <strong>b</strong>ut, <strong>o</strong>r, <strong>y</strong>et or <strong>s</strong>o.',
       parts: ['first part', 'comma', 'but / or / yet / so', 'second part'],
@@ -98,6 +101,7 @@
     // ------------------------------------------------------------ light blue
     {
       id: '3ed', name: '3 ___ed, sentences', set: 'lightblue',
+      plain: 'Start with three feeling words that end in -ed.',
       formula: '<b>___ed, ___ed, ___ed,</b> rest of sentence',
       what: '3 ___ed sentences <strong>begin with three related adjectives, each ending in “ed”</strong>, with a comma after each one.',
       parts: ['-ed adjective', 'comma', '-ed adjective', 'comma', '-ed adjective', 'comma', 'rest of the sentence'],
@@ -114,6 +118,7 @@
     },
     {
       id: 'doublely', name: 'Double ly ending sentences', set: 'lightblue',
+      plain: 'Finish with two -ly words that say how something was done.',
       formula: 'verb … <b>___ly and ___ly</b>.',
       what: 'Double ly sentences <strong>end with two adverbs (ending in -ly) after a verb</strong>, joined by “and”. You can also start with them, followed by a comma.',
       parts: ['verb', 'adverb (-ly)', 'and', 'adverb (-ly)'],
@@ -132,6 +137,7 @@
     // ------------------------------------------------------------------ blue
     {
       id: 'inged', name: '___ing, ___ed sentences', set: 'blue',
+      plain: 'Start with an -ing action and where it happened, then say what happened next.',
       formula: '<b>___ing</b> where, <b>___ed</b> what happened.',
       what: 'An ing, ed sentence <strong>begins with a verb ending in “ing”</strong>, then says <strong>where</strong> the action happened, then a comma, then <strong>an “ed” verb</strong> telling us what happened next.',
       parts: ['-ing verb', 'location of the action', 'comma', '-ed verb', 'what happened'],
@@ -149,6 +155,7 @@
     },
     {
       id: 'verbperson', name: 'Verb, person sentences', set: 'blue',
+      plain: 'Start with an action word and a comma, then say who did it.',
       formula: '<b>Verb,</b> person + rest of the sentence.',
       what: 'These sentences <strong>start with a verb, followed by a comma</strong>, then the <strong>name of a person</strong> (or he / she / they) and the rest of the sentence.',
       parts: ['verb', 'comma', 'person', 'rest of the sentence'],
@@ -165,6 +172,7 @@
     },
     {
       id: 'emotion', name: 'Emotion word, (comma) sentences', set: 'blue',
+      plain: 'Start with one feeling word and a comma.',
       formula: '<b>Emotion word,</b> rest of the sentence.',
       what: 'Emotion word sentences <strong>begin with a feeling word (an adjective), followed by a comma</strong>.',
       parts: ['emotion word (adjective)', 'comma', 'rest of the sentence'],
@@ -187,6 +195,7 @@
     },
     {
       id: 'which', name: 'Noun, which / where / who', set: 'blue',
+      plain: 'Tuck extra information about a noun into the middle, between two commas.',
       formula: '<b>Noun,</b> which / where / who + extra information, rest of the sentence.',
       what: 'These sentences begin with a <strong>noun, then a comma, followed by which, where or who</strong> and some extra “tucked in” information, then another comma and the rest of the sentence.',
       parts: ['noun', 'comma', 'which / where / who', 'tucked-in information', 'comma', 'rest of the sentence'],
@@ -204,6 +213,7 @@
     },
     {
       id: 'themore', name: 'The more, the more', set: 'blue',
+      plain: 'Show how one feeling makes something else grow.',
       formula: '<b>The more</b> emotion …, <b>the more</b> related action …',
       what: 'The more, the more sentences are in <strong>two parts</strong>. The first “more” is followed by an emotion word; the second “more” is followed by a related action or emotion.',
       parts: ['The more', 'emotion', 'comma', 'the more', 'action related to the emotion'],
@@ -220,6 +230,7 @@
     },
     {
       id: 'adsame', name: 'Ad, same ad', set: 'blue',
+      plain: 'Use the same describing word twice, then explain why.',
       formula: '… <b>adjective</b> noun, <b>same adjective</b> because …',
       what: 'This sentence has <strong>two identical adjectives</strong>, one repeated shortly after the other, after a comma, and usually followed by <strong>because</strong>.',
       parts: ['adjective', 'noun', 'comma', 'adjective repeated', 'because …'],
@@ -236,6 +247,7 @@
     },
     {
       id: 'yoked', name: 'Last word, first word (yoked)', set: 'blue',
+      plain: 'End one sentence and start the next with the same word.',
       formula: 'Sentence ending in <b>word</b>. <b>Word</b> + more detail.',
       what: 'This is made up of <strong>two sentences</strong>. The second sentence <strong>begins with the word or phrase the first sentence ends with</strong>. (Almost the same as an Ad, same ad.)',
       parts: ['first sentence', 'last word', 'full stop', 'same word', 'more detail'],
@@ -259,6 +271,7 @@
     // ----------------------------------------------------------------- green
     {
       id: 'dede', name: 'De: De sentences', set: 'green',
+      plain: 'Describe something, then add a colon and the details.',
       formula: '<b>Description</b> : <b>details</b>.',
       what: 'A De: De (Description: Details) sentence has <strong>two parts separated by a colon</strong>. The first part gives a description; the second gives further details.',
       parts: ['description', 'colon (:)', 'details'],
@@ -275,6 +288,7 @@
     },
     {
       id: 'weather', name: 'Personification of weather', set: 'green',
+      plain: 'Make the weather act like a person to set the mood.',
       formula: 'The <b>weather</b> + <b>human action</b> …',
       what: 'In this sentence, <strong>the weather is given a human trait</strong>. It helps to create a particular mood in a story.',
       parts: ['weather', 'human action or feeling', 'the mood it creates'],
@@ -292,6 +306,7 @@
     },
     {
       id: 'oi', name: 'O. (I.) sentences', set: 'green',
+      plain: 'Show what a character does, then what they really feel inside (in brackets).',
       formula: '<b>Outside</b> actions. <b>(Inside</b> true feelings.<b>)</b>',
       what: 'O. (I.) sentences are made up of <strong>two related sentences</strong>. The first tells the reader the character’s <strong>outward actions</strong>. The second, <strong>in brackets</strong>, shows their true <strong>inner feelings</strong>.',
       parts: ['outside: what the character does', 'brackets', 'inside: what they really feel'],
@@ -309,6 +324,7 @@
     },
     {
       id: '3bad', name: '3 bad – (dash) question?', set: 'green',
+      plain: 'Three bad things, a dash, then a question.',
       formula: '<b>bad, bad, bad</b> – question?',
       what: 'These sentences begin with <strong>three negative words</strong>. After the third there is a <strong>dash</strong> and then <strong>a question</strong> relating to them.',
       parts: ['3 negative words', 'dash', 'question about them'],
@@ -326,6 +342,7 @@
     },
     {
       id: 'ififif', name: 'If, if, if, then', set: 'green',
+      plain: 'Three “if” ideas in a row, then what happened because of them.',
       formula: '<b>If</b> …, <b>if</b> …, <b>if</b> …, <b>then</b> …',
       what: 'If, if, if, then sentences are made up of <strong>three “if” parts</strong> followed by <strong>“then”</strong> and the result.',
       parts: ['if …', 'if …', 'if …', 'then …'],
@@ -343,6 +360,7 @@
     },
     {
       id: '2pairs', name: '2 pairs sentences', set: 'green',
+      plain: 'Start with two pairs of describing words.',
       formula: '<b>___ and ___, ___ and ___,</b> rest of the sentence.',
       what: '2 pairs sentences <strong>begin with two pairs of related adjectives</strong>, each joined by “and”, with a comma after each pair. Then explain what they relate to.',
       parts: ['adjective and adjective', 'comma', 'adjective and adjective', 'comma', 'explanation'],
@@ -359,6 +377,7 @@
     },
     {
       id: 'someothers', name: 'Some; others sentences', set: 'green',
+      plain: 'Show two sides of something: “Some… ; others…”.',
       formula: '<b>Some</b> …<b>; others</b> …',
       what: 'Some; others sentences <strong>begin with the word “some”</strong> and have a <strong>semicolon (;) instead of “but”</strong> to separate the two parts.',
       parts: ['Some …', 'semicolon (;)', 'others …'],
@@ -376,6 +395,7 @@
     },
     {
       id: 'imagine', name: 'Imagine 3 examples:', set: 'green',
+      plain: 'Start with “Imagine”, give three details, then a colon.',
       formula: '<b>Imagine</b> … when/where …, when/where …, when/where …<b>:</b> statement.',
       what: 'These sentences begin with <strong>“Imagine”</strong> and describe <strong>three things</strong> about a place, time or person. After the third there is a <strong>colon</strong>, followed by a statement saying there is such a time, place or person.',
       parts: ['Imagine', '3 descriptions', 'colon (:)', 'statement'],
@@ -393,6 +413,7 @@
     },
     {
       id: 'pc', name: 'P.C. sentences (paired conjunctions)', set: 'green',
+      plain: 'Use joining words that come in pairs, like both… and.',
       formula: '<b>both</b> … <b>and</b> / <b>neither</b> … <b>nor</b> / <b>not so</b> … <b>as</b> / <b>as</b> … <b>as</b>',
       what: 'P.C. is short for <strong>paired conjunctions</strong>: two joining words that work together. Both / and, neither / nor, not so / as, as / as.',
       parts: ['first conjunction', '…', 'its partner'],
@@ -409,6 +430,7 @@
     },
     {
       id: 'definition', name: 'One word / phrase: definition', set: 'green',
+      plain: 'A word or phrase, a colon, then what it means.',
       formula: '<b>Word or phrase:</b> definition.',
       what: 'These sentences begin with <strong>one word or phrase followed by a colon</strong>. This is then followed by a <strong>definition</strong> of the word.',
       parts: ['one word or phrase', 'colon (:)', 'definition'],

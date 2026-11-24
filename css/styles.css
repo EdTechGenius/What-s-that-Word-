@@ -712,3 +712,8 @@ main:focus, main:focus-visible { outline: none; }
 .section-tabs[hidden] { display: none; }
 main { padding-top: 16px; }
 @media print { .section-tabs { display: none !important; } }
+
+.peat-plain { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.peat-plain.big { font-size: 20px; margin: 6px 0 4px; }
+.peat-set-blurb { font-weight: 400; }
+@media (max-width: 640px) { .peat-set-blurb { display: none; } }

@@ -1923,7 +1923,7 @@
       <p class="lead">${P.TYPES.length} sentence types to make your writing more varied and interesting. Open one to see how it works, read the examples, then write and save your own!</p>
       <div class="chips peat-sets" role="group" aria-label="Colour sets">
         <button class="chip ${!peatSet ? 'on' : ''}" data-set="">All sentence types</button>
-        ${Object.keys(P.SETS).map((k) => `<button class="chip peat-set-chip ${peatSet === k ? 'on' : ''}" data-set="${k}" style="--pc:${P.SETS[k].colour};--ps:${P.SETS[k].soft}"><span class="peat-dot"></span>${esc(P.SETS[k].label)}</button>`).join('')}
+        ${Object.keys(P.SETS).map((k) => `<button class="chip peat-set-chip ${peatSet === k ? 'on' : ''}" data-set="${k}" style="--pc:${P.SETS[k].colour};--ps:${P.SETS[k].soft}"><span class="peat-dot"></span>${esc(P.SETS[k].label)}<span class="peat-set-blurb"> – ${esc(P.SETS[k].blurb)}</span></button>`).join('')}
       </div>
       <div class="peat-grid">
         ${list.map((t) => {
@@ -1931,6 +1931,7 @@
           return `<a class="peat-card" href="#/peat/${t.id}" style="${peatStyle(t)}">
             <span class="peat-set-label">${esc(P.SETS[t.set].label)}</span>
             <strong>${esc(t.name)}</strong>
+            <span class="peat-plain">${esc(t.plain)}</span>
             <span class="peat-formula">${t.formula}</span>
             <span class="peat-eg">${esc(P.plain(t.examples[0]))}</span>
             <span class="peat-mine">${n ? `✏️ ${n} of my own` : 'Write your own →'}</span>
@@ -1960,8 +1961,9 @@
         <a class="fig-back" href="#/peat/mine">📒 My sentence collection</a>
       </nav>
       <div class="peat-hero" style="${peatStyle(t)}">
-        <span class="peat-set-label">${esc(set.label)} · ${idx + 1} of ${P.TYPES.length}</span>
+        <span class="peat-set-label">${esc(set.label)} – ${esc(set.blurb)} · ${idx + 1} of ${P.TYPES.length}</span>
         <h1>${esc(t.name)}</h1>
+        <p class="peat-plain big">${esc(t.plain)}</p>
         <p class="peat-formula big">${t.formula}</p>
       </div>
       <div class="fig-learn">
