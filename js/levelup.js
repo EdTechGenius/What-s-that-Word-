@@ -55,7 +55,7 @@
     look: {
       cls: 'verb', why: 'How did they look? Quickly, angrily, carefully? Choose a verb that shows it.',
       lower: L('stare, peek, peep, watch, glance, gaze'),
-      ambitious: L('glare, peer, squint, spot, notice, gawp'),
+      ambitious: L('glare, peer, squint, gawp, gape'),
       challenge: L('scrutinise, survey, inspect, observe, examine, study'),
       avoid: { next: ['after', 'for', 'like', 'forward', 'as', 'up'], nextAdjective: true },
     },
@@ -102,7 +102,7 @@
       cls: 'verb', why: 'How did they fall? Slowly, suddenly, dramatically? Show it with your verb.',
       lower: L('trip, tumble, slip, drop, crash'),
       ambitious: L('stumble, topple, plummet, collapse, sprawl'),
-      challenge: L('plunge, descend, crumple, slump, cascade'),
+      challenge: L('plunge, descend, crumple, slump'),
       avoid: { next: ['asleep', 'in', 'out', 'for', 'apart', 'behind'] },
     },
     jump: {
@@ -129,7 +129,7 @@
       cls: 'adjective', why: 'How small? A more precise adjective helps the reader picture it.',
       lower: L('tiny, dainty, slight, teeny'),
       ambitious: L('miniature, petite, puny, compact, minute'),
-      challenge: L('microscopic, minuscule, diminutive, infinitesimal, meagre'),
+      challenge: L('microscopic, minuscule, diminutive, infinitesimal'),
     },
     nice: {
       cls: 'adjective', why: '‘Nice’ is a very plain word – it doesn’t tell the reader much. What was it really like?',
@@ -195,8 +195,8 @@
     },
     slow: {
       cls: 'adjective', why: 'How slow? Choose a word that helps the reader feel the pace.',
-      lower: L('sluggish, lazy, steady, gentle'),
-      ambitious: L('leisurely, plodding, unhurried, dawdling, lumbering'),
+      lower: L('sluggish, steady, unhurried'),
+      ambitious: L('leisurely, plodding, dawdling, lumbering'),
       challenge: L('ponderous, lethargic, languid, laborious'),
     },
     pretty: {
@@ -207,7 +207,7 @@
     },
     ugly: {
       cls: 'adjective', why: 'Show the reader exactly how unpleasant it looked.',
-      lower: L('horrible, hideous, nasty, scary'),
+      lower: L('horrible, hideous, nasty, unpleasant'),
       ambitious: L('grotesque, repulsive, unsightly, gruesome'),
       challenge: L('monstrous, repugnant, misshapen, ghastly, grisly'),
     },
@@ -222,7 +222,7 @@
       cls: 'adjective', why: 'How tired? A stronger adjective shows the reader.',
       lower: L('sleepy, weary, worn-out, drowsy'),
       ambitious: L('exhausted, shattered, fatigued, drained'),
-      challenge: L('lethargic, listless, depleted, spent'),
+      challenge: L('lethargic, listless, bleary-eyed'),
       avoid: { next: ['of'] },
     },
     loud: {
@@ -235,13 +235,13 @@
       cls: 'adjective', why: 'What kind of quiet? Peaceful, eerie, silent? Be precise.',
       lower: L('silent, soft, calm, still, hushed'),
       ambitious: L('peaceful, muffled, tranquil, muted, faint'),
-      challenge: L('inaudible, serene, soundless, placid'),
+      challenge: L('inaudible, serene, soundless, noiseless'),
     },
     dark: {
       cls: 'adjective', why: 'How dark? Set the mood with a more powerful word.',
       lower: L('gloomy, shadowy, dim, murky'),
       ambitious: L('pitch-black, shady, dusky, sombre, unlit'),
-      challenge: L('inky, obsidian, foreboding, sunless, impenetrable'),
+      challenge: L('inky, sunless, moonless, impenetrable'),
     },
     wet: {
       cls: 'adjective', why: 'How wet? Help the reader feel it.',
@@ -251,7 +251,7 @@
     },
     funny: {
       cls: 'adjective', why: 'What kind of funny? Silly, clever, ridiculous?',
-      lower: L('silly, hilarious, comical, daft, cheeky'),
+      lower: L('silly, hilarious, comical, daft'),
       ambitious: L('amusing, witty, humorous, ridiculous, zany'),
       challenge: L('absurd, farcical, ludicrous, side-splitting, whimsical, droll'),
     },
@@ -265,7 +265,7 @@
       cls: 'adjective', why: 'How hungry? Make the reader’s tummy rumble!',
       lower: L('starving, peckish, empty'),
       ambitious: L('famished, ravenous, greedy'),
-      challenge: L('voracious, insatiable, gluttonous'),
+      challenge: L('voracious, insatiable, half-starved'),
     },
     strange: {
       cls: 'adjective', why: 'What kind of strange? Mysterious, spooky, unusual?',
@@ -281,7 +281,7 @@
     },
     boring: {
       cls: 'adjective', why: 'Make even a boring thing sound interesting with a precise word!',
-      lower: L('dull, plain, slow'),
+      lower: L('dull, plain, uninteresting'),
       ambitious: L('tedious, dreary, monotonous, uneventful'),
       challenge: L('mundane, humdrum, wearisome, lacklustre, insipid'),
     },
@@ -297,7 +297,7 @@
       cls: 'adverb', why: 'An ambitious adverb (or adverbial) shows exactly how fast.',
       lower: L('swiftly, rapidly, speedily, hurriedly'),
       ambitious: L('briskly, hastily, promptly, nimbly'),
-      challenge: L('in a flash, like lightning, at breakneck speed, frantically'),
+      challenge: L('in a flash, like lightning, at breakneck speed, in the blink of an eye'),
     },
     slowly: {
       cls: 'adverb', why: 'Show the reader exactly how slowly – carefully, lazily, nervously?',
