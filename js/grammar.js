@@ -12,11 +12,11 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../vendor/compromise.js'));
+    module.exports = factory(require('../vendor/compromise.js'), require('./wordforms.js'));
   } else {
-    root.Grammar = factory(root.nlp);
+    root.Grammar = factory(root.nlp, root.WordForms);
   }
-})(typeof self !== 'undefined' ? self : this, function (nlp) {
+})(typeof self !== 'undefined' ? self : this, function (nlp, WF) {
   'use strict';
 
   // Describing words that the tagger's dictionary is missing or gets wrong
@@ -699,11 +699,24 @@
   function article(s) { return /^[aeiou]/i.test(s) ? 'an' : 'a'; }
 
   function tenseSwap(w, tok) {
-    try {
-      const forms = nlp(tok.root || w).verbs().conjugate()[0] || {};
-      if (tok.sub === 'past') return `today: ${forms.PresentTense || forms.Infinitive || w} / yesterday: ${w}`;
-      return `today: ${w} / yesterday: ${forms.PastTense || w}`;
-    } catch (e) { return w; }
+    const base = tok.root && tok.root !== w ? tok.root : baseVerb(w);
+    if (tok.sub === 'past') return `today: ${WF.verbForm(base, /^(i|you|we|they)$/.test(w) ? 'base' : 'present3')} / yesterday: ${w}`;
+    return `today: ${w} / yesterday: ${WF.verbForm(base, 'past')}`;
+  }
+
+  // ---- word forms (see wordforms.js)
+  const LEX = (() => { try { return nlp.model().one.lexicon; } catch (e) { return {}; } })();
+  const knownWord = (w) => !!LEX[w] && !/Pronoun|Determiner|Preposition|Conjunction|Possessive/.test(String(LEX[w]));
+  /** petrified -> petrify, ran -> run, gleaming -> gleam */
+  function baseVerb(word) {
+    const w = String(word).toLowerCase();
+    if (LEX[w] === 'Infinitive') return w;            // already a base verb (focus, bring)
+    return WF.baseVerb(w, knownWord);
+  }
+  /** { present3, past, ing } for any form of a verb */
+  function conjugate(word) {
+    const base = baseVerb(word);
+    return { base, present3: WF.verbForm(base, 'present3'), past: WF.verbForm(base, 'past'), ing: WF.verbForm(base, 'ing') };
   }
 
   function looksLikeVerb(stem) {
@@ -757,21 +770,8 @@
     return null;
   }
 
-  /** make a synonym match the form of the original word, e.g. awaken -> awoke/awakened */
-  function inflect(word, form) {
-    if (!form || /\s/.test(word)) return word;
-    if ((form === 'past' && /ed$/.test(word)) || (form === 'ing' && /ing$/.test(word))) return word;
-    try {
-      let out = '';
-      if (['past', 'ing', 'present3'].includes(form)) {
-        const c = nlp(word).tag('Infinitive').verbs().conjugate()[0] || {};
-        out = { past: c.PastTense, ing: c.Gerund, present3: c.PresentTense }[form] || '';
-      } else if (form === 'plural') out = nlp(word).tag('Singular').nouns().toPlural().text();
-      else if (form === 'comparative') out = nlp(word).tag('Adjective').adjectives().toComparative().text();
-      else if (form === 'superlative') out = nlp(word).tag('Adjective').adjectives().toSuperlative().text();
-      return out && !/\s/.test(out) ? out : word;
-    } catch (e) { return word; }
-  }
+  /** make a synonym match the form of the original word, e.g. awaken -> awakened. Null if it can't be done. */
+  function inflect(word, form) { return WF.inflect(word, form); }
 
-  return { CLASSES, ORDER, analyse, explain, inflect };
+  return { CLASSES, ORDER, analyse, explain, inflect, baseVerb, conjugate };
 });

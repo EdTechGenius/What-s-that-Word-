@@ -425,33 +425,15 @@
     return units;
   }
 
-  // forms the grammar library gets wrong
-  const FIXED = {
-    murmur: { ing: 'murmuring' }, tiptoe: { past: 'tiptoed' }, gallop: { past: 'galloped', ing: 'galloping' },
-    peep: { past: 'peeped' }, gawp: { past: 'gawped' }, wallop: { past: 'walloped', ing: 'walloping' },
-    hoot: { past: 'hooted' }, spring: { ing: 'springing' }, slump: { past: 'slumped' },
-  };
-  function syllables(w) {
-    const groups = (w.toLowerCase().replace(/e$/, '').match(/[aeiouy]+/g) || []).length;
-    const splits = (w.toLowerCase().match(/ia|io|eo|ua|uo|iu/g) || []).length;
-    return Math.max(1, groups + splits);
-  }
-
-  /** Change a suggestion to match the pupil's word: tense, plural, -er/-est, capital letter. */
+  /**
+   * Change a suggestion to match the pupil's word: tense, plural, -er/-est, capital letter.
+   * Returns null if the word can't be changed that way (e.g. "enormous" can't become "more enormous").
+   */
   function shape(word, form, inflect, capital) {
     let out = word;
-    if (form && !/\s/.test(word)) {
-      if (FIXED[word] && FIXED[word][form]) {
-        out = FIXED[word][form];
-      } else if (form === 'comparative' || form === 'superlative') {
-        // short words take -er/-est (tinier, wettest); longer ones take more/most (more enormous)
-        const short = !/-/.test(word) && (syllables(word) === 1 || (syllables(word) === 2 && /y$/.test(word)));
-        const done = short && inflect ? inflect(word, form) : word;
-        out = done !== word ? done : (form === 'comparative' ? 'more ' : 'most ') + word;
-      } else {
-        out = inflect ? inflect(word, form) : word;
-      }
-    }
+    if (form && !/\s/.test(word)) out = inflect ? inflect(word, form) : word;
+    else if (form === 'comparative' || form === 'superlative') out = null;
+    if (!out) return null;
     if (capital) out = out.charAt(0).toUpperCase() + out.slice(1);
     return out;
   }
@@ -466,7 +448,7 @@
     const tiers = level === 'upper' ? ['challenge', 'ambitious'] : ['lower'];
     return tiers.map((tier) => ({
       tier,
-      words: Array.from(new Set(e[tier].map((w) => shape(w, unit.form, inflect, capital || e.fronted)))),
+      words: Array.from(new Set(e[tier].map((w) => shape(w, unit.form, inflect, capital || e.fronted)).filter(Boolean))),
     })).filter((g) => g.words.length);
   }
 

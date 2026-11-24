@@ -509,7 +509,7 @@
       const synEl = $('#syn', modal);
       window.Lookup.synonyms(word, ex.cls, extra).then((list) => {
         if (!modal.isConnected) return;
-        const shaped = Array.from(new Set(list.map((s) => window.Grammar.inflect(s, ex.form))))
+        const shaped = Array.from(new Set(list.map((s) => window.Grammar.inflect(s, ex.form)).filter(Boolean)))
           .filter((s) => s.toLowerCase() !== ex.word.toLowerCase()).slice(0, 10);
         entry.synonyms = shaped.slice(0, 6);
         refreshBank();
@@ -770,12 +770,6 @@
     return null;
   }
 
-  function conjugate(verb) {
-    try {
-      return window.nlp(verb).tag('Infinitive').verbs().conjugate()[0] || null;
-    } catch (e) { return null; }
-  }
-
   function upperTip(m, word, forms) {
     const hl = (t) => markWord(t, forms);
     if (m.cls === 'adjective') {
@@ -786,11 +780,8 @@
     }
     if (m.cls === 'verb') {
       const hint = inflectionHint(m);
-      const c = conjugate(hint ? hint.base : word);
-      if (c && c.PastTense && c.PresentTense) {
-        return `Change the tense: <strong>today</strong> it ${esc(c.PresentTense)} · <strong>yesterday</strong> it ${esc(c.PastTense)} · <strong>right now</strong> it is ${esc(c.Gerund || '')}.`;
-      }
-      return `It is a verb, so it changes with time (tense).`;
+      const c = window.Grammar.conjugate(hint ? hint.base : word);
+      return `Change the tense: <strong>today</strong> it ${esc(c.present3)} · <strong>yesterday</strong> it ${esc(c.past)} · <strong>right now</strong> it is ${esc(c.ing)}.`;
     }
     if (m.cls === 'adverb') {
       return `It tells you how, when, where or how often. Try it at the <strong>start of a sentence</strong> followed by a comma to make a fronted adverbial: “${hl(`${cap(word)}, the door creaked open.`)}”`;
@@ -915,7 +906,7 @@
       let list = await window.Lookup.richSynonyms(base, m.cls, {
         extra: m.synonyms, bases: !hint && info.from ? [info.from] : [],
       }).catch(() => []);
-      if (hint) list = list.map((x) => Object.assign({}, x, { word: window.Grammar.inflect(x.word, hint.form) }));
+      if (hint) list = list.map((x) => Object.assign({}, x, { word: window.Grammar.inflect(x.word, hint.form) })).filter((x) => x.word);
       const seen = new Set([info.word]);
       list = list.filter((x) => !seen.has(x.word) && seen.add(x.word));
       return { m, list, hint };
@@ -1484,12 +1475,12 @@
     const word = ex.lookup || t.text.toLowerCase();
     const req = level === 'upper'
       ? window.Lookup.richSynonyms(word, t.cls).then((list) => {
-        const by = (tier) => list.filter((x) => x.tier === tier).slice(0, 10).map((x) => fix(x.word));
+        const by = (tier) => list.filter((x) => x.tier === tier).map((x) => fix(x.word)).filter(Boolean).slice(0, 10);
         const groups = [{ tier: 'challenge', words: by('challenge') }, { tier: 'ambitious', words: by('ambitious') }];
         if (!groups[0].words.length && !groups[1].words.length) groups.push({ tier: 'lower', words: by('everyday') });
         return groups;
       })
-      : window.Lookup.synonyms(word, t.cls).then((list) => [{ tier: 'lower', words: list.slice(0, 8).map(fix) }]);
+      : window.Lookup.synonyms(word, t.cls).then((list) => [{ tier: 'lower', words: list.map(fix).filter(Boolean).slice(0, 8) }]);
     req.then((groups) => {
       const box = $('#lu-options', modal);
       if (!box || !modal.isConnected) return;

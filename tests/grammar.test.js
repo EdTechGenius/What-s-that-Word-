@@ -38,6 +38,33 @@ a.tokens.forEach((t) => {
 });
 assert.strictEqual(G.inflect('awaken', 'past'), 'awakened');
 assert.strictEqual(G.inflect('warrior', 'plural'), 'warriors');
+// Word forms: never invent words (audit: "petrifiedded", "pept", "gladest", "more enormous")
+const W = require('../js/wordforms.js');
+const VERBS = {
+  peep: 'peeped peeping peeps', hoot: 'hooted hooting hoots', keel: 'keeled keeling keels',
+  murmur: 'murmured murmuring murmurs', gallop: 'galloped galloping gallops', gawp: 'gawped gawping gawps',
+  tiptoe: 'tiptoed tiptoeing tiptoes', spring: 'sprang springing springs', cling: 'clung clinging clings',
+  slink: 'slunk slinking slinks', sneak: 'sneaked sneaking sneaks', dive: 'dived diving dives', ski: 'skied skiing skis',
+  travel: 'travelled travelling travels', panic: 'panicked panicking panics', stop: 'stopped stopping stops',
+  run: 'ran running runs', make: 'made making makes', cry: 'cried crying cries', go: 'went going goes',
+  tie: 'tied tying ties', flee: 'fled fleeing flees', petrify: 'petrified petrifying petrifies',
+  visit: 'visited visiting visits', begin: 'began beginning begins', whisper: 'whispered whispering whispers',
+};
+for (const [v, forms] of Object.entries(VERBS)) {
+  assert.deepStrictEqual(['past', 'ing', 'present3'].map((f) => W.verbForm(v, f)).join(' '), forms, v);
+}
+const ADJ = { glad: 'gladder', dim: 'dimmer', glum: 'glummer', sad: 'sadder', grey: 'greyer', cruel: 'crueller',
+  big: 'bigger', happy: 'happier', gentle: 'gentler', good: 'better', bad: 'worse', sombre: 'more sombre', worn: 'more worn' };
+for (const [a, c] of Object.entries(ADJ)) assert.strictEqual(W.compare(a, 'comparative'), c, a);
+['enormous', 'huge', 'giant', 'colossal', 'furious', 'spent'].forEach((a) => assert.strictEqual(W.compare(a, 'comparative'), null, a));
+const BASES = { petrified: 'petrify', stopped: 'stop', ran: 'run', whispered: 'whisper', gleaming: 'gleam', crying: 'cry',
+  made: 'make', went: 'go', swam: 'swim', hopped: 'hop', hoped: 'hope', tied: 'tie', studied: 'study', panicked: 'panic',
+  travelled: 'travel', galloped: 'gallop', dying: 'die', excited: 'excite', spilled: 'spill', hissed: 'hiss', focus: 'focus' };
+for (const [w, b] of Object.entries(BASES)) assert.strictEqual(G.baseVerb(w), b, w);
+assert.strictEqual(G.conjugate('petrified').past, 'petrified');
+assert.strictEqual(G.conjugate('petrified').ing, 'petrifying');
+console.log('Word form checks passed.');
+
 // Level Up! spots plain words and shapes the suggestions to fit
 const LU = require('../js/levelup.js');
 {
@@ -47,7 +74,8 @@ const LU = require('../js/levelup.js');
   const said = LU.findUnits(a)[0];
   assert.ok(LU.suggestions(said, 'upper', G.inflect)[0].words.includes('bellowed'));
   assert.ok(LU.suggestions(said, 'lower', G.inflect)[0].words.includes('shouted'));
-  assert.strictEqual(LU.shape('colossal', 'comparative', G.inflect), 'more colossal');
+  assert.strictEqual(LU.shape('colossal', 'comparative', G.inflect), null, 'extreme words are not compared');
+  assert.strictEqual(LU.shape('gloomy', 'comparative', G.inflect), 'gloomier');
   assert.strictEqual(LU.shape('gallop', 'past', G.inflect), 'galloped');
   // more ways to level up: where adverbs, openers and conjunctions can go
   const b = G.analyse('"Who is there?" said Sam. He walked into the dark house. The dog ate its dinner. It was cold.');
