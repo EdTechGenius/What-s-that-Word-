@@ -12,11 +12,11 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../vendor/compromise.js'));
+    module.exports = factory(require('../vendor/compromise.js'), require('./wordforms.js'));
   } else {
-    root.Grammar = factory(root.nlp);
+    root.Grammar = factory(root.nlp, root.WordForms);
   }
-})(typeof self !== 'undefined' ? self : this, function (nlp) {
+})(typeof self !== 'undefined' ? self : this, function (nlp, WF) {
   'use strict';
 
   // Describing words that the tagger's dictionary is missing or gets wrong
@@ -207,9 +207,11 @@
       if (w === 'who' || w === 'whom' || w === 'which' || w === 'what') {
         return r('pronoun', i === 0 || (prev && /[.!?]\s*$/.test(prev.post)) ? 'question' : 'relative');
       }
-      if ((w === 'when' || w === 'where') && prev) return r('conjunction', 'subordinating');
+      if ((w === 'when' || w === 'where') && (prev || !isQuestion(tokens, i))) return r('conjunction', 'subordinating');
       return r('adverb', 'question');
     }
+
+    if (w === 'others' || (w === 'other' && !nextNounish && prev && bare(prev.normal) === 'the')) return r('pronoun', 'indefinite');
 
     // pronouns
     if (has(t, 'Pronoun') || SUBJECT_PRON.has(w) || OBJECT_PRON.has(w) || POSSESSIVE_PRON.has(w) ||
@@ -274,6 +276,12 @@
       }
     }
 
+    // "-ed" feeling words after a being verb: "He was petrified of spiders", "She felt exhausted."
+    if (has(t, 'PastTense') && /ed$/.test(w) && prev && /^(am|is|are|was|were|be|been|being|feel|feels|felt|seem|seems|seemed|look|looks|looked|became|become|becomes|appeared|grew)$/.test(bare(prev.normal)) &&
+        (!next || endsClause(t) || /^(of|about|with|at|and|but|that|when|because)$/.test(bare(next.normal)))) {
+      return r('adjective');
+    }
+
     // verbs
     if (has(t, 'Verb') || has(t, 'Copula') || has(t, 'Modal') || has(t, 'Auxiliary')) {
       if (has(t, 'Modal')) return r('verb', 'modal');
@@ -324,6 +332,66 @@
     } catch (e) { return false; }
   }
 
+  function isQuestion(tokens, i) {
+    const s = tokens[i].sentence;
+    let k = i;
+    while (tokens[k + 1] && tokens[k + 1].sentence === s) k++;
+    return /\?/.test(tokens[k].post);
+  }
+
+  // words that can be adverbs without -ly: "fell straight into", "builds up underground"
+  const FLAT_ADVERBS = new Set('straight underground fast hard high low late early deep far upstairs downstairs home outside inside overseas abroad back forward backward overhead'.split(' '));
+  const VERB_SUBS = ['present', 'base', 'command', null];
+
+  /**
+   * Second pass: fix patterns the tagger gets wrong, now that every word has a first label.
+   */
+  function fixups(tokens) {
+    const same = (a, b) => a && b && a.sentence === b.sentence;
+    const word = (t) => (t ? bare(t.normal || t.text) : '');
+    tokens.forEach((t, i) => {
+      const prev = same(t, tokens[i - 1]) ? tokens[i - 1] : null;
+      const prev2 = same(t, tokens[i - 2]) ? tokens[i - 2] : null;
+      const next = same(t, tokens[i + 1]) ? tokens[i + 1] : null;
+      const nextOK = next && !/[,.;:!?]/.test(t.post);
+
+      // "was" before an adjective is a being verb, not a helping verb
+      if (t.cls === 'verb' && t.sub === 'auxiliary' && has(t, 'Copula') && next && next.cls === 'adjective') t.sub = 'being';
+
+      // "the fishing boats needed help": determiner + noun + [-s word tagged as a verb] + [-ed word] -> noun, verb
+      if (t.cls === 'verb' && /s$/.test(word(t)) && prev && ['noun', 'adjective'].includes(prev.cls) && prev2 && prev2.cls === 'determiner' &&
+          nextOK && /ed$/.test(word(next)) && ['adjective', 'verb'].includes(next.cls)) {
+        t.cls = 'noun'; t.sub = 'plural';
+        next.cls = 'verb'; next.sub = 'past';
+      }
+
+      // "When pressure builds": a word tagged as a verb, followed by a verb ending in -s, is the noun doing it
+      if (t.cls === 'verb' && VERB_SUBS.includes(t.sub) && nextOK && next.cls === 'verb' && /s$/.test(word(next)) &&
+          !/s$/.test(word(t)) && (!prev || ['conjunction', 'determiner', 'adjective', 'preposition'].includes(prev.cls))) {
+        t.cls = 'noun'; t.sub = null;
+      }
+
+      // "others ooze lava": a word tagged as a noun straight after a subject pronoun is the verb
+      if (t.cls === 'noun' && !t.sub && prev && prev.cls === 'pronoun' && ['personal', 'indefinite'].includes(prev.sub) &&
+          !/[,.;:!?]/.test(prev.post) && looksLikeVerb(word(t)) && !(next && next.cls === 'verb')) {
+        t.cls = 'verb'; t.sub = 'present';
+      }
+
+      // "fell straight into", "builds up underground": adverbs that look like adjectives
+      if (t.cls === 'adjective' && FLAT_ADVERBS.has(word(t)) && prev && (prev.cls === 'verb' || (prev.cls === 'adverb' && PARTICLES.has(word(prev)))) &&
+          !(prev.cls === 'verb' && (prev.sub === 'being' || has(prev, 'Copula'))) &&
+          !(nextOK && ['noun', 'propernoun', 'adjective'].includes(next.cls))) {
+        t.cls = 'adverb'; t.sub = advType(word(t)) || 'place';
+      }
+
+      // "Oh dear!", "Oh no!", "Oh my goodness!": the whole phrase is an interjection
+      if (prev && prev.cls === 'interjection' && !/[,.;:!?]/.test(prev.post) &&
+          ['dear', 'no', 'my', 'goodness', 'gosh', 'wow', 'yes', 'well', 'boy'].includes(word(t)) && (!next || /[!?.]/.test(t.post) || word(next) === 'goodness')) {
+        t.cls = 'interjection'; t.sub = null;
+      }
+    });
+  }
+
   function advType(w) {
     if (/ly$/.test(w) && !FREQ_ADV.has(w)) return 'manner';
     if (FREQ_ADV.has(w)) return 'frequency';
@@ -352,6 +420,7 @@
         t.cls = c.cls; t.sub = c.sub; t.id = id++;
         maxS = Math.max(maxS, t.sentence);
       });
+      fixups(tokens);
       tokens.forEach((t) => { t.sentence += sentenceOffset; });
       sentenceOffset += maxS + 1;
       result.paragraphs.push({ tokens });
@@ -689,11 +758,24 @@
   function article(s) { return /^[aeiou]/i.test(s) ? 'an' : 'a'; }
 
   function tenseSwap(w, tok) {
-    try {
-      const forms = nlp(tok.root || w).verbs().conjugate()[0] || {};
-      if (tok.sub === 'past') return `today: ${forms.PresentTense || forms.Infinitive || w} / yesterday: ${w}`;
-      return `today: ${w} / yesterday: ${forms.PastTense || w}`;
-    } catch (e) { return w; }
+    const base = tok.root && tok.root !== w ? tok.root : baseVerb(w);
+    if (tok.sub === 'past') return `today: ${WF.verbForm(base, /^(i|you|we|they)$/.test(w) ? 'base' : 'present3')} / yesterday: ${w}`;
+    return `today: ${w} / yesterday: ${WF.verbForm(base, 'past')}`;
+  }
+
+  // ---- word forms (see wordforms.js)
+  const LEX = (() => { try { return nlp.model().one.lexicon; } catch (e) { return {}; } })();
+  const knownWord = (w) => !!LEX[w] && !/Pronoun|Determiner|Preposition|Conjunction|Possessive/.test(String(LEX[w]));
+  /** petrified -> petrify, ran -> run, gleaming -> gleam */
+  function baseVerb(word) {
+    const w = String(word).toLowerCase();
+    if (LEX[w] === 'Infinitive') return w;            // already a base verb (focus, bring)
+    return WF.baseVerb(w, knownWord);
+  }
+  /** { present3, past, ing } for any form of a verb */
+  function conjugate(word) {
+    const base = baseVerb(word);
+    return { base, present3: WF.verbForm(base, 'present3'), past: WF.verbForm(base, 'past'), ing: WF.verbForm(base, 'ing') };
   }
 
   function looksLikeVerb(stem) {
@@ -747,20 +829,8 @@
     return null;
   }
 
-  /** make a synonym match the form of the original word, e.g. awaken -> awoke/awakened */
-  function inflect(word, form) {
-    if (!form || /\s/.test(word)) return word;
-    try {
-      let out = '';
-      if (['past', 'ing', 'present3'].includes(form)) {
-        const c = nlp(word).tag('Infinitive').verbs().conjugate()[0] || {};
-        out = { past: c.PastTense, ing: c.Gerund, present3: c.PresentTense }[form] || '';
-      } else if (form === 'plural') out = nlp(word).tag('Singular').nouns().toPlural().text();
-      else if (form === 'comparative') out = nlp(word).tag('Adjective').adjectives().toComparative().text();
-      else if (form === 'superlative') out = nlp(word).tag('Adjective').adjectives().toSuperlative().text();
-      return out && !/\s/.test(out) ? out : word;
-    } catch (e) { return word; }
-  }
+  /** make a synonym match the form of the original word, e.g. awaken -> awakened. Null if it can't be done. */
+  function inflect(word, form) { return WF.inflect(word, form); }
 
-  return { CLASSES, ORDER, analyse, explain, inflect };
+  return { CLASSES, ORDER, analyse, explain, inflect, baseVerb, conjugate };
 });

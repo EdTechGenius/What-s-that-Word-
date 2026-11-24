@@ -28,7 +28,10 @@
     const p = fetch(url, { headers: { Accept: 'application/json' } }).then(async (res) => {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+      const data = await res.json();
+      // Datamuse word lists: use British spellings
+      if (Array.isArray(data) && url.startsWith(MUSE)) data.forEach((x) => { if (x && x.word) x.word = british(x.word); });
+      return data;
     });
     memo.set(url, p);
     try { return await p; } catch (e) { memo.delete(url); throw e; }
@@ -85,7 +88,40 @@
   }
 
   function tidy(s) {
-    return String(s).replace(/\s+/g, ' ').trim();
+    return britishText(String(s).replace(/\s+/g, ' ').trim());
+  }
+
+  // ---- British spellings for words and definitions that come from American sources
+  const US_UK = {
+    color: 'colour', colors: 'colours', colored: 'coloured', colorful: 'colourful', favorite: 'favourite',
+    favorites: 'favourites', behavior: 'behaviour', honor: 'honour', humor: 'humour', neighbor: 'neighbour',
+    neighbors: 'neighbours', flavor: 'flavour', harbor: 'harbour', labor: 'labour', rumor: 'rumour', odor: 'odour',
+    vapor: 'vapour', armor: 'armour', valor: 'valour', vigor: 'vigour', glamor: 'glamour', center: 'centre',
+    centers: 'centres', theater: 'theatre', gray: 'grey', grayish: 'greyish', mold: 'mould', moldy: 'mouldy',
+    plow: 'plough', pajamas: 'pyjamas', aluminum: 'aluminium', jewelry: 'jewellery', mom: 'mum', fiber: 'fibre',
+    defense: 'defence', offense: 'offence', cozy: 'cosy', skeptical: 'sceptical', somber: 'sombre', meager: 'meagre',
+    traveled: 'travelled', traveling: 'travelling', traveler: 'traveller', canceled: 'cancelled', labeled: 'labelled',
+    modeled: 'modelled', marvelous: 'marvellous', woolen: 'woollen', fueled: 'fuelled', quarreled: 'quarrelled',
+    leveled: 'levelled', signaled: 'signalled', jeweled: 'jewelled', catalog: 'catalogue', analog: 'analogue',
+    gotten: 'got', airplane: 'aeroplane', candor: 'candour', rancor: 'rancour', savior: 'saviour', savor: 'savour',
+    savory: 'savoury', splendor: 'splendour', tumor: 'tumour', clamor: 'clamour', ardor: 'ardour', fervor: 'fervour',
+  };
+  const KEEP_IZE = /^(size|prize|maize|baize|seize|assize|capsize|downsize|oversize|undersize|outsize|resize|upsize|supersize)$/;
+  /** One word: American -> British spelling (fossilized -> fossilised, color -> colour). */
+  function british(word) {
+    const w = String(word);
+    const low = w.toLowerCase();
+    let out = US_UK[low];
+    if (!out) {
+      const m = /^([a-z]{3,})(iz|yz)(e|es|ed|ing|ation|ations|er|ers)$/.exec(low);
+      if (m && !KEEP_IZE.test(m[1] + m[2] + 'e')) out = m[1] + (m[2] === 'iz' ? 'is' : 'ys') + m[3];
+    }
+    if (!out) return w;
+    if (w === w.toUpperCase() && w.length > 1) return out.toUpperCase();
+    return /^[A-Z]/.test(w) ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+  }
+  function britishText(text) {
+    return String(text).replace(/[A-Za-z]+/g, (w) => british(w));
   }
   function addUnique(arr, s) {
     const v = tidy(s);
@@ -194,5 +230,132 @@
     return (res || []).map((x) => x.word).filter((s) => s !== w && !/\s/.test(s));
   }
 
-  root.Lookup = { define, defineAs, synonyms, thesaurus, suggest, cleanWord, POS_MAP };
+  // =================================================== upper primary extras
+  const WIKT = 'https://en.wiktionary.org/api/rest_v1/page/definition/';
+
+  /** How common a word is: occurrences per million words (Datamuse), or null if unknown. */
+  async function frequency(word) {
+    const w = cleanWord(word);
+    if (!w) return null;
+    const res = await getJSON(`${MUSE}words?sp=${encodeURIComponent(w)}&md=f&max=1`).catch(() => null);
+    const hit = (res || []).find((x) => x.word === w);
+    return hit ? freqOf(hit) : null;
+  }
+  function freqOf(x) {
+    const f = (x.tags || []).find((t) => /^f:/.test(t));
+    return f ? parseFloat(f.slice(2)) : null;
+  }
+  async function isWord(w, min) {
+    const f = await frequency(w);
+    return f != null && f >= (min == null ? 0.5 : min);
+  }
+
+  /** Sort a word into a challenge level from how often it is used. */
+  function tierOf(f) {
+    if (f == null) return 'ambitious';
+    if (f >= 12) return 'everyday';
+    if (f >= 1.5) return 'ambitious';
+    return 'challenge';
+  }
+
+  /**
+   * Lots of synonyms for one word class, each with how common it is.
+   * Returns [{ word, f, tier }]. Very obscure words are left out.
+   */
+  async function richSynonyms(word, cls, opts) {
+    const o = opts || {};
+    const w = cleanWord(word);
+    if (!w || !THESAURUS_CLASSES.includes(cls)) return [];
+    const bases = Array.from(new Set([w].concat(o.bases || []).map(cleanWord).filter(Boolean)));
+    const found = new Map();      // word -> f
+    const fits = (x) => (x.tags || []).some((t) => MUSE_POS[t] === cls);
+    const okWord = (s) => s && !bases.includes(s.toLowerCase()) && s.split(' ').length <= 2 && !/[^a-z' -]/i.test(s);
+    const add = (s, f) => { if (okWord(s) && !found.has(s)) found.set(s, f); };
+
+    const lists = await Promise.all(bases.flatMap((b) => [
+      getJSON(`${MUSE}words?rel_syn=${encodeURIComponent(b)}&md=pf&max=80`).catch(() => []),
+      getJSON(`${MUSE}words?ml=${encodeURIComponent(b)}&md=pf&max=100`).catch(() => []),
+    ]));
+    lists.forEach((list, i) => {
+      const isMl = i % 2 === 1;
+      const top = list && list[0] ? list[0].score || 1 : 1;
+      (list || []).forEach((x) => {
+        if (!fits(x)) return;
+        if (isMl && (x.score || 0) < top * 0.35) return;    // "means like" gets loose further down the list
+        add(x.word, freqOf(x));
+      });
+    });
+    // synonyms from the dictionary, with their frequency looked up
+    const extra = (o.extra || []).filter((s) => okWord(s) && !found.has(s)).slice(0, 15);
+    const fs = await Promise.all(extra.map((s) => frequency(s).catch(() => null)));
+    extra.forEach((s, i) => add(s, fs[i]));
+
+    return Array.from(found, ([s, f]) => ({ word: s, f, tier: tierOf(f) }))
+      .filter((x) => x.f == null || x.f >= 0.08)
+      .sort((a, b) => (b.f || 0) - (a.f || 0));
+  }
+
+  /** Words often found just before / after this word ("absolutely petrified", "petrified of") */
+  const FILLER = new Set('a an the and or but i you he she it we they me him her us them my your his its our their this that these those is are was were be been am to there then so as if s t'.split(' '));
+  async function phrases(word) {
+    const w = cleanWord(word);
+    const [before, after] = await Promise.all([
+      getJSON(`${MUSE}words?rel_bgb=${encodeURIComponent(w)}&md=f&max=40`).catch(() => []),
+      getJSON(`${MUSE}words?rel_bga=${encodeURIComponent(w)}&md=f&max=40`).catch(() => []),
+    ]);
+    const pick = (list) => (list || []).map((x) => x.word).filter((s) => /^[a-z]+$/.test(s) && !FILLER.has(s)).slice(0, 6);
+    return [
+      ...pick(before).map((b) => ({ text: `${b} ${w}`, other: b })),
+      ...pick(after).map((a) => ({ text: `${w} ${a}`, other: a })),
+    ];
+  }
+
+  /** Other members of the word's family that share its stem (petrify, petrifying, petrification…) */
+  const FAMILY_END = /^(e|y|s|es|ed|ied|ies|ier|iest|ily|iness|ing|ying|er|ers|est|ly|ness|ful|fully|less|ment|ments|ion|ions|tion|ation|ication|ification|ifications|action|able|ably|ible|ibly|ous|ously|ious|iously|ive|ively|ity|ities|al|ally|ise|ised|ising|ize|ized|izing|ify|ifies|ified|ifying|ism|ist|ists|ish|ance|ence|ant|ent|ence|ery|ic|ical|ically)?$/;
+  async function family(base) {
+    const b = cleanWord(base);
+    const stem = b.replace(/(e|y|ed|ied|ing)$/, '');
+    if (stem.length < 4 || /\s/.test(b)) return [];
+    const res = await getJSON(`${MUSE}words?sp=${encodeURIComponent(stem)}*&md=pf&max=80`).catch(() => []);
+    return (res || [])
+      .filter((x) => FAMILY_END.test(x.word.slice(stem.length)) && (freqOf(x) || 0) >= 0.2)
+      .map((x) => ({ word: x.word, cls: (x.tags || []).map((t) => MUSE_POS[t]).find(Boolean) || 'other', f: freqOf(x) }))
+      .sort((a, c) => a.word.length - c.word.length)
+      .slice(0, 12);
+  }
+
+  /** Extra example sentences from Wiktionary, by word class: { adjective: ['...'], verb: [...] } */
+  async function examples(word) {
+    const w = cleanWord(word);
+    const data = await getJSON(WIKT + encodeURIComponent(w)).catch(() => null);
+    const out = {};
+    ((data && data.en) || []).forEach((entry) => {
+      const cls = POS_MAP[lower(entry.partOfSpeech)] || null;
+      if (!cls) return;
+      (entry.definitions || []).forEach((d) => {
+        const list = (d.parsedExamples || []).map((e) => e.example).concat(d.examples || []);
+        list.forEach((html) => {
+          const text = stripHtml(html);
+          if (text.length >= 15 && text.length <= 220 && !/[{}|]/.test(text)) {
+            (out[cls] = out[cls] || []);
+            if (!out[cls].includes(text)) out[cls].push(text);
+          }
+        });
+      });
+    });
+    return out;
+  }
+  function lower(s) { return String(s || '').toLowerCase(); }
+  function stripHtml(html) {
+    const raw = String(html || '');
+    if (typeof DOMParser !== 'undefined') {
+      return tidy(new DOMParser().parseFromString(raw, 'text/html').body.textContent || '');
+    }
+    return tidy(raw.replace(/<[^>]*>/g, ''));
+  }
+
+  root.Lookup = {
+    define, defineAs, synonyms, thesaurus, suggest, cleanWord, POS_MAP, british, britishText,
+    frequency, isWord, tierOf, richSynonyms, phrases, family, examples,
+  };
 })(typeof self !== 'undefined' ? self : this);
