@@ -528,10 +528,6 @@
   }
 
   // ================================================================ VOCAB
-  const VOCAB_IDEAS = {
-    lower: ['enormous', 'whisper', 'gloomy', 'swiftly', 'courage', 'glimmer', 'furious', 'tremble'],
-    upper: ['petrified', 'ominous', 'meander', 'exhilarated', 'tenacious', 'luminous', 'dilapidated', 'melancholy'],
-  };
   const LEVELS = {
     lower: { label: 'Lower primary', emoji: '🌱', blurb: 'Clear meanings, examples and everyday synonyms.', luBlurb: 'Swap plain words like said, nice, went and big for more exciting words.' },
     upper: { label: 'Upper primary', emoji: '🚀', blurb: 'Deeper explanations, challenging synonyms sorted by level, word parts, word families, example sentences and a sentence challenge.', luBlurb: 'Ambitious and challenge words, one powerful word instead of “very…”, and fronted adverbials instead of “Then”.' },
@@ -546,7 +542,6 @@
     document.title = 'Vivid Vocabulary · What’s That Word?';
     const level = store.get('level', null);
     if (!LEVELS[level]) { renderLevelChoice(word); return; }
-    const recent = store.get('recent', []);
     app.innerHTML = `
       <div class="page-head">
         <div>
@@ -561,10 +556,6 @@
         <input id="vocab-in" type="search" placeholder="Type a word…" autocomplete="off" autocapitalize="none" spellcheck="true" aria-label="Word to look up" value="${esc(word)}">
         <button class="btn primary" type="submit">Look it up</button>
       </form>
-      <div class="search-extras">
-        <div class="chips"><span class="label">Try:</span>${VOCAB_IDEAS[level].map((w) => `<a class="chip" href="#/vocab/${w}">${w}</a>`).join('')}</div>
-        ${recent.length ? `<div class="chips"><span class="label">Recent:</span>${recent.map((w) => `<a class="chip" href="#/vocab/${encodeURIComponent(w)}">${esc(w)}</a>`).join('')}</div>` : ''}
-      </div>
       <div id="vocab-out"></div>`;
     $$('[data-level]').forEach((b) => {
       b.onclick = () => { store.set('level', b.dataset.level); renderVocab(word); };
@@ -630,7 +621,6 @@
       </div>`;
       return null;
     }
-    store.set('recent', [word].concat(store.get('recent', []).filter((w) => w !== word)).slice(0, 10));
     return info;
   }
 
