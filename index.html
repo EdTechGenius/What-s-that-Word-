@@ -25,17 +25,34 @@
       <span class="brand-mark" aria-hidden="true">?</span>
       <span class="brand-name">What's That Word?</span>
     </a>
-    <nav class="nav" aria-label="Sections">
-      <a href="#/grammar" data-nav="grammar" title="Glorious Grammar"><span aria-hidden="true">✏️</span><span class="nav-text">Grammar</span></a>
-      <a href="#/vocab" data-nav="vocab" title="Vivid Vocabulary"><span aria-hidden="true">📖</span><span class="nav-text">Vocab</span></a>
-      <a href="#/levelup" data-nav="levelup" title="Level Up!"><span aria-hidden="true">⚡</span><span class="nav-text">Level up</span></a>
-      <a href="#/figurative" data-nav="figurative" title="Figurative Language"><span aria-hidden="true">🎨</span><span class="nav-text">Figurative</span></a>
-      <a href="#/peat" data-nav="peat" title="Alan Peat Sentences"><span aria-hidden="true">🧱</span><span class="nav-text">Sentences</span></a>
-      <a href="#/notebook" data-nav="notebook" title="My Notebook"><span aria-hidden="true">📓</span><span class="nav-text">Notebook</span><span class="count" id="bank-count" hidden></span></a>
+    <nav class="nav" aria-label="Main menu">
+      <div class="nav-group" data-group="explore">
+        <button class="nav-btn" aria-expanded="false" aria-controls="menu-explore" aria-haspopup="true">
+          <span class="nav-ico" aria-hidden="true">🔍</span><span class="nav-label">Explore words</span>
+        </button>
+        <div class="nav-menu" id="menu-explore" hidden>
+          <a href="#/grammar" data-nav="grammar"><span class="nm-ico" aria-hidden="true">✏️</span><span><strong>Glorious Grammar</strong><small>See every word class in colour</small></span></a>
+          <a href="#/vocab" data-nav="vocab"><span class="nm-ico" aria-hidden="true">📖</span><span><strong>Vivid Vocabulary</strong><small>Look up meanings and synonyms</small></span></a>
+        </div>
+      </div>
+      <div class="nav-group" data-group="write">
+        <button class="nav-btn" aria-expanded="false" aria-controls="menu-write" aria-haspopup="true">
+          <span class="nav-ico" aria-hidden="true">✍️</span><span class="nav-label">Improve my writing</span>
+        </button>
+        <div class="nav-menu" id="menu-write" hidden>
+          <a href="#/levelup" data-nav="levelup"><span class="nm-ico" aria-hidden="true">⚡</span><span><strong>Level Up!</strong><small>Make your writing more exciting</small></span></a>
+          <a href="#/figurative" data-nav="figurative"><span class="nm-ico" aria-hidden="true">🎨</span><span><strong>Figurative Language</strong><small>Similes, metaphors and more</small></span></a>
+          <a href="#/peat" data-nav="peat"><span class="nm-ico" aria-hidden="true">🧱</span><span><strong>Alan Peat Sentences</strong><small>Sentence types to try</small></span></a>
+        </div>
+      </div>
+      <a class="nav-btn" href="#/notebook" data-nav="notebook">
+        <span class="nav-ico" aria-hidden="true">📓</span><span class="nav-label">My Notebook</span><span class="count" id="bank-count" hidden></span>
+      </a>
       <button class="font-btn" data-font-toggle aria-pressed="false" title="Dyslexia-friendly font (OpenDyslexic)" aria-label="Dyslexia-friendly font"><span aria-hidden="true">Aa</span></button>
     </nav>
   </header>
 
+  <nav class="section-tabs" id="section-tabs" aria-label="Pages in this area" hidden></nav>
   <main id="app" tabindex="-1"></main>
 
   <div id="modal-root"></div>

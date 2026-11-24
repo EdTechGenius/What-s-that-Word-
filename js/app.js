@@ -154,7 +154,7 @@
     const parts = location.hash.replace(/^#\/?/, '').split('/');
     const page = parts[0] || '';
     const arg = parts.slice(1).join('/');
-    $$('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.nav === page));
+    updateMenu(page);
     window.scrollTo(0, 0);
     if (page === 'grammar') renderGrammar();
     else if (page === 'vocab') renderVocab(decodeURIComponent(arg || ''));
@@ -168,6 +168,55 @@
     app.focus({ preventScroll: true });
   }
   window.addEventListener('hashchange', route);
+
+  // ------------------------------------------------------------ main menu (3 areas)
+  const AREAS = {
+    explore: { label: '🔍 Explore words', pages: [['grammar', '✏️ Glorious Grammar'], ['vocab', '📖 Vivid Vocabulary']] },
+    write: { label: '✍️ Improve my writing', pages: [['levelup', '⚡ Level Up!'], ['figurative', '🎨 Figurative Language'], ['peat', '🧱 Alan Peat Sentences']] },
+  };
+  function closeMenus(except) {
+    $$('.nav-group').forEach((g) => {
+      if (g === except) return;
+      const btn = $('.nav-btn', g);
+      btn.setAttribute('aria-expanded', 'false');
+      $('.nav-menu', g).hidden = true;
+    });
+  }
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.nav-group > .nav-btn');
+    if (btn) {
+      const g = btn.parentElement;
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      closeMenus(g);
+      btn.setAttribute('aria-expanded', String(open));
+      $('.nav-menu', g).hidden = !open;
+      if (open) { const first = $('.nav-menu a', g); if (first && ev.detail === 0) first.focus(); }
+      return;
+    }
+    if (!ev.target.closest('.nav-menu')) closeMenus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('.nav-menu:not([hidden])')) {
+      const g = $('.nav-menu:not([hidden])').parentElement;
+      closeMenus();
+      $('.nav-btn', g).focus();
+    }
+  });
+  function updateMenu(page) {
+    closeMenus();
+    $$('.nav a[data-nav]').forEach((a) => {
+      const on = a.dataset.nav === page;
+      a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    $$('.nav-group').forEach((g) => $('.nav-btn', g).classList.toggle('active', !!$('a.active', g)));
+    // tabs for the other pages in the same area
+    const strip = document.getElementById('section-tabs');
+    const area = Object.values(AREAS).find((a) => a.pages.some(([p]) => p === page));
+    strip.hidden = !area;
+    strip.innerHTML = area ? `<span class="st-label">${area.label}</span>` + area.pages.map(([p, label]) =>
+      `<a href="#/${p}" class="${p === page ? 'on' : ''}" ${p === page ? 'aria-current="page"' : ''}>${label}</a>`).join('') : '';
+  }
 
   // ================================================================ HOME
   function renderHome() {
@@ -329,6 +378,7 @@
         </span>
         <span class="spacer"></span>
         <button class="btn small ghost" id="read-all">🔊 Read aloud</button>
+        <button class="btn small ghost" id="to-levelup">⚡ Level up this text</button>
         <button class="btn small ghost no-print" id="print">🖨️ Print</button>
       </div>
       <div class="legend ${state.filter.size ? 'filtering' : ''}" id="legend" role="group" aria-label="Word classes – tap to show only that class">
@@ -346,6 +396,11 @@
     $('#smaller').onclick = () => { state.size = Math.max(16, state.size - 3); store.set('size', state.size); applyView(); };
     $('#bigger').onclick = () => { state.size = Math.min(56, state.size + 3); store.set('size', state.size); applyView(); };
     $('#read-all').onclick = () => speak(state.text);
+    $('#to-levelup').onclick = () => {
+      startLevelUp(state.text);
+      lu.editing = false;
+      location.hash = '#/levelup';
+    };
     $('#print').onclick = () => window.print();
     $$('#legend [data-cls]').forEach((b) => {
       b.onclick = () => {
