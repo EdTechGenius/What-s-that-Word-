@@ -13,10 +13,10 @@
   'use strict';
 
   const SETS = {
-    red: { label: 'Red set', colour: '#E03131', soft: '#FFF5F5' },
-    lightblue: { label: 'Light blue set', colour: '#1098AD', soft: '#E3FAFC' },
-    blue: { label: 'Blue set', colour: '#1971C2', soft: '#E7F5FF' },
-    green: { label: 'Green set', colour: '#2B8A3E', soft: '#EBFBEE' },
+    red: { label: 'Red set', colour: '#C92A2A', soft: '#FFF5F5' },
+    lightblue: { label: 'Light blue set', colour: '#0B7285', soft: '#E3FAFC' },
+    blue: { label: 'Blue set', colour: '#1864AB', soft: '#E7F5FF' },
+    green: { label: 'Green set', colour: '#237032', soft: '#EBFBEE' },
   };
 
   const EMOTIONS = new Set(('desperate terrified anxious nervous furious delighted excited exhausted frightened worried angry ' +

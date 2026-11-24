@@ -34,7 +34,7 @@
 
   const DEVICES = [
     {
-      id: 'simile', name: 'Simile', emoji: '🪞', colour: '#1C7ED6', soft: '#E7F5FF',
+      id: 'simile', name: 'Simile', emoji: '🪞', colour: '#1970BE', soft: '#E7F5FF',
       short: 'Compares two things using “like” or “as”.',
       what: 'A simile compares one thing to another using the words <strong>like</strong> or <strong>as</strong>. It helps the reader picture something by comparing it to something they already know.',
       spot: 'Look for the words “like” or “as … as” comparing two different things.',
@@ -80,7 +80,7 @@
       ],
     },
     {
-      id: 'personification', name: 'Personification', emoji: '🌬️', colour: '#0C8599', soft: '#E3FAFC',
+      id: 'personification', name: 'Personification', emoji: '🌬️', colour: '#0B7A8D', soft: '#E3FAFC',
       short: 'Gives human actions or feelings to non-human things.',
       what: 'Personification gives <strong>human feelings or actions</strong> to something that isn’t human, like the weather, an object or a place.',
       spot: 'Look for an object, animal or place doing something only a person can really do, such as whispering, smiling, dancing or groaning.',
@@ -103,7 +103,7 @@
       ],
     },
     {
-      id: 'alliteration', name: 'Alliteration', emoji: '🔤', colour: '#E8590C', soft: '#FFF4E6',
+      id: 'alliteration', name: 'Alliteration', emoji: '🔤', colour: '#BE490A', soft: '#FFF4E6',
       short: 'Several nearby words start with the same sound.',
       what: 'Alliteration is when several words close together <strong>start with the same sound</strong>.',
       spot: 'Look at the first letter or sound of words next to each other. Are they the same?',
@@ -126,7 +126,7 @@
       ],
     },
     {
-      id: 'onomatopoeia', name: 'Onomatopoeia', emoji: '💥', colour: '#E03131', soft: '#FFF5F5',
+      id: 'onomatopoeia', name: 'Onomatopoeia', emoji: '💥', colour: '#C92A2A', soft: '#FFF5F5',
       short: 'Words that sound like the noise they describe.',
       what: 'Onomatopoeia is a word that <strong>sounds like the noise it describes</strong>, such as <em>buzz</em>, <em>crash</em> or <em>sizzle</em>.',
       spot: 'Say the word aloud. Does it sound like the noise?',
@@ -150,7 +150,7 @@
       ],
     },
     {
-      id: 'hyperbole', name: 'Hyperbole', emoji: '🚀', colour: '#D6336C', soft: '#FFF0F6',
+      id: 'hyperbole', name: 'Hyperbole', emoji: '🚀', colour: '#C2255C', soft: '#FFF0F6',
       short: 'A huge exaggeration that isn’t meant literally.',
       what: 'Hyperbole (say it: <em>high-PER-bo-lee</em>) is a <strong>huge exaggeration</strong>. It isn’t meant to be taken literally.',
       spot: 'Ask yourself: could this REALLY be true? If not, it may be hyperbole.',
@@ -173,7 +173,7 @@
       ],
     },
     {
-      id: 'idiom', name: 'Idioms', emoji: '🐈', colour: '#2F9E44', soft: '#EBFBEE',
+      id: 'idiom', name: 'Idioms', emoji: '🐈', colour: '#237032', soft: '#EBFBEE',
       short: 'Phrases that mean something different from their words.',
       what: 'An idiom is a <strong>phrase whose meaning is different from the meanings of its words</strong>. “Raining cats and dogs” has nothing to do with animals!',
       spot: 'If a phrase doesn’t make sense word by word, it might be an idiom.',
@@ -240,7 +240,7 @@
       ],
     },
     {
-      id: 'assonance', name: 'Assonance', emoji: '🎵', colour: '#AE3EC9', soft: '#F8F0FC',
+      id: 'assonance', name: 'Assonance', emoji: '🎵', colour: '#9C36B5', soft: '#F8F0FC',
       short: 'The same vowel sound repeated in nearby words.',
       what: 'Assonance is when <strong>the same vowel sound</strong> (a, e, i, o, u) is repeated in words that are close together.',
       spot: 'Read it aloud and listen for the same vowel sound in the MIDDLE of several words. It is the sound that matters, not the spelling!',
@@ -261,7 +261,7 @@
       ],
     },
     {
-      id: 'imagery', name: 'Imagery', emoji: '🌈', colour: '#F08C2E', soft: '#FFF9DB',
+      id: 'imagery', name: 'Imagery', emoji: '🌈', colour: '#A35F1F', soft: '#FFF9DB',
       short: 'Description that uses the five senses.',
       what: 'Imagery is <strong>descriptive language that appeals to the five senses</strong>: sight 👀, sound 👂, smell 👃, touch ✋ and taste 👅. It helps readers imagine they are really there.',
       spot: 'Ask: which sense does this help me use? Can I see, hear, smell, feel or taste it?',
