@@ -38,6 +38,20 @@ a.tokens.forEach((t) => {
 });
 assert.strictEqual(G.inflect('awaken', 'past'), 'awakened');
 assert.strictEqual(G.inflect('warrior', 'plural'), 'warriors');
+// Level Up! spots plain words and shapes the suggestions to fit
+const LU = require('../js/levelup.js');
+{
+  const a = G.analyse('"Help!" said Sam. Then he went home. It was a very big dog. I am going to win. She got up.');
+  const units = LU.findUnits(a).map((u) => u.ids.map((i) => a.tokens[i].text).join(' ') + ':' + u.key);
+  assert.deepStrictEqual(units, ['said:say', 'Then:then', 'went:go', 'very big:big']);
+  const said = LU.findUnits(a)[0];
+  assert.ok(LU.suggestions(said, 'upper', G.inflect)[0].words.includes('bellowed'));
+  assert.ok(LU.suggestions(said, 'lower', G.inflect)[0].words.includes('shouted'));
+  assert.strictEqual(LU.shape('colossal', 'comparative', G.inflect), 'more colossal');
+  assert.strictEqual(LU.shape('gallop', 'past', G.inflect), 'galloped');
+  console.log('Level Up checks passed.');
+}
+
 // word parts (with a tiny pretend dictionary)
 const WP = require('../js/wordparts.js');
 const known = new Set(['petrify', 'happy', 'unhappy', 'hope', 'port', 'transport', 'comfortable']);

@@ -147,6 +147,7 @@
     window.scrollTo(0, 0);
     if (page === 'grammar') renderGrammar();
     else if (page === 'vocab') renderVocab(decodeURIComponent(arg || ''));
+    else if (page === 'levelup') renderLevelUp();
     else if (page === 'bank') renderBank();
     else renderHome();
     applyFont();
@@ -190,6 +191,13 @@
           <h2>Vivid Vocabulary Corner</h2>
           <p>Look up any word. Get its meaning, its word class and lots of synonyms to make your writing sparkle – a dictionary and thesaurus in one.</p>
           <span class="go">Look up a word →</span>
+        </a>
+        <a class="corner levelup" href="#/levelup">
+          <span class="corner-icon" aria-hidden="true">⚡</span>
+          <h2>Level Up!</h2>
+          <div class="sample" aria-hidden="true"><span class="lu-demo-old">said</span> → <span class="lu-demo-new">bellowed</span></div>
+          <p>Type your writing and swap plain words for ambitious and challenge words. Watch your writing level up!</p>
+          <span class="go">Level up my writing →</span>
         </a>
         <a class="corner bank" href="#/bank">
           <span class="corner-icon" aria-hidden="true">⭐</span>
@@ -496,8 +504,8 @@
     upper: ['petrified', 'ominous', 'meander', 'exhilarated', 'tenacious', 'luminous', 'dilapidated', 'melancholy'],
   };
   const LEVELS = {
-    lower: { label: 'Lower primary', emoji: '🌱', blurb: 'Clear meanings, examples and everyday synonyms.' },
-    upper: { label: 'Upper primary', emoji: '🚀', blurb: 'Deeper explanations, challenging synonyms sorted by level, word parts, word families, example sentences and a sentence challenge.' },
+    lower: { label: 'Lower primary', emoji: '🌱', blurb: 'Clear meanings, examples and everyday synonyms.', luBlurb: 'Swap plain words like said, nice, went and big for more exciting words.' },
+    upper: { label: 'Upper primary', emoji: '🚀', blurb: 'Deeper explanations, challenging synonyms sorted by level, word parts, word families, example sentences and a sentence challenge.', luBlurb: 'Ambitious and challenge words, one powerful word instead of “very…”, and fronted adverbials instead of “Then”.' },
   };
   const TIERS = [
     ['challenge', '🚀 Challenge words', 'rare and impressive'],
@@ -543,12 +551,13 @@
     else $('#vocab-in').focus();
   }
 
-  function renderLevelChoice(word) {
+  function renderLevelChoice(word, corner) {
+    const isLU = corner === 'levelup';
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">📖 Corner 2</p>
-          <h1>Vivid <em>Vocabulary</em> Corner</h1>
+          <p class="eyebrow">${isLU ? '⚡ Corner 3' : '📖 Corner 2'}</p>
+          <h1>${isLU ? 'Level <em>Up!</em>' : 'Vivid <em>Vocabulary</em> Corner'}</h1>
         </div>
       </div>
       <p class="lead">Who is exploring words today? Choose your level. You can change it at any time.</p>
@@ -557,12 +566,12 @@
           <button class="corner level-card ${l}" data-pick="${l}">
             <span class="corner-icon" aria-hidden="true">${LEVELS[l].emoji}</span>
             <h2>${LEVELS[l].label}</h2>
-            <p>${esc(LEVELS[l].blurb)}</p>
+            <p>${esc(isLU ? LEVELS[l].luBlurb : LEVELS[l].blurb)}</p>
             <span class="go">Choose ${LEVELS[l].label.toLowerCase()} →</span>
           </button>`).join('')}
       </div>`;
     $$('[data-pick]').forEach((b) => {
-      b.onclick = () => { store.set('level', b.dataset.pick); renderVocab(word); };
+      b.onclick = () => { store.set('level', b.dataset.pick); if (isLU) renderLevelUp(); else renderVocab(word); };
     });
   }
 
@@ -996,6 +1005,360 @@
     };
   }
 
+  // ================================================================ LEVEL UP
+  const LU_SAMPLES = [
+    { title: 'At the park', text: 'It was a nice day so we went to the park. The big dog ran fast and I was very happy.' },
+    { title: 'The spooky house', text: '"Who is there?" said Sam. He walked into the dark house. It was very cold and he was scared. Then he saw a strange thing on the floor.' },
+    { title: 'Lunch time', text: 'I was very hungry so I ate my sandwich quickly. It was really good. Then I got a small cake and we had fun.' },
+  ];
+  const LU_TIER = {
+    lower: ['⭐ Try one of these', ''],
+    ambitious: ['✨ Ambitious words', 'great for upgrading your writing'],
+    challenge: ['🚀 Challenge words', 'rare and impressive'],
+  };
+  const lu = {
+    text: store.get('lutext', ''),
+    analysis: null,
+    units: [],
+    editing: true,
+  };
+
+  function levelSwitch(level) {
+    return `<div class="seg level-switch" role="group" aria-label="Level">
+      ${Object.keys(LEVELS).map((l) => `<button data-level="${l}" aria-pressed="${l === level}">${LEVELS[l].emoji} ${LEVELS[l].label}</button>`).join('')}
+    </div>`;
+  }
+
+  function renderLevelUp() {
+    document.title = 'Level Up! · What’s That Word?';
+    const level = store.get('level', null);
+    if (!LEVELS[level]) { renderLevelChoice('', 'levelup'); return; }
+    if (lu.text && !lu.analysis) startLevelUp(lu.text);
+    if (lu.editing || !lu.analysis) renderLevelUpInput(level);
+    else renderLevelUpResult(level);
+    $$('[data-level]').forEach((b) => {
+      b.onclick = () => { store.set('level', b.dataset.level); renderLevelUp(); };
+    });
+  }
+
+  function luHead(level) {
+    return `<div class="page-head">
+        <div>
+          <p class="eyebrow">⚡ Corner 3</p>
+          <h1>Level <em>Up!</em></h1>
+        </div>
+        ${levelSwitch(level)}
+      </div>`;
+  }
+
+  function renderLevelUpInput(level) {
+    app.innerHTML = `
+      ${luHead(level)}
+      <p class="lead">${level === 'upper'
+        ? 'Type or paste your writing. Plain words will be underlined, so you can swap them for <strong>✨ ambitious</strong> or <strong>🚀 challenge</strong> words. Phrases like “very big” become one powerful word, and sentences starting with “Then” get a fronted adverbial.'
+        : 'Type or paste your writing. Plain words like <em>said</em>, <em>nice</em>, <em>went</em> and <em>big</em> will be underlined, so you can swap them for more exciting words!'}</p>
+      <div class="card input-card">
+        <textarea id="lu-in" placeholder="Type or paste your sentence here…" spellcheck="true">${esc(lu.text)}</textarea>
+        <div class="input-actions">
+          <button class="btn primary" id="lu-go">⚡ Level up my writing</button>
+          <button class="btn ghost" id="lu-clear">Clear</button>
+        </div>
+        <div class="samples">
+          <h3>Need something to practise on? Try one of these:</h3>
+          <div class="chips">${LU_SAMPLES.map((s, i) => `<button class="chip" data-lu-sample="${i}">${esc(s.title)}</button>`).join('')}</div>
+        </div>
+      </div>`;
+    const ta = $('#lu-in');
+    ta.addEventListener('input', () => { lu.text = ta.value; store.set('lutext', ta.value); });
+    $('#lu-clear').onclick = () => { ta.value = ''; lu.text = ''; store.set('lutext', ''); ta.focus(); };
+    $$('[data-lu-sample]').forEach((b) => {
+      b.onclick = () => { ta.value = LU_SAMPLES[b.dataset.luSample].text; lu.text = ta.value; store.set('lutext', ta.value); };
+    });
+    $('#lu-go').onclick = () => {
+      const text = ta.value.trim();
+      if (!text) { toast('Type or paste some writing first!'); ta.focus(); return; }
+      if (text.length > 5000) { toast('That’s a lot of writing! Try a shorter piece (under 5,000 characters).'); return; }
+      startLevelUp(ta.value);
+      lu.editing = false;
+      renderLevelUp();
+      window.scrollTo(0, 0);
+    };
+  }
+
+  function startLevelUp(text) {
+    lu.text = text;
+    store.set('lutext', text);
+    lu.analysis = window.Grammar.analyse(text);
+    lu.units = window.LevelUp.findUnits(lu.analysis).map((u) => Object.assign(u, { chosen: null, tier: null }));
+  }
+
+  // the text of a unit as the pupil wrote it ("very big")
+  function unitOriginal(u) {
+    const ts = u.ids.map((i) => lu.analysis.tokens[i]);
+    return ts.map((t, k) => (k ? ts[k - 1].post + t.pre : '') + t.text).join('');
+  }
+  function unitAt() {
+    const map = new Map();
+    lu.units.forEach((u) => u.ids.forEach((id, k) => map.set(id, { u, first: k === 0, last: k === u.ids.length - 1 })));
+    return map;
+  }
+
+  /**
+   * Build the levelled-up text. mode: 'html' (tappable words), 'after' (swaps highlighted), 'plain'.
+   */
+  function buildLevelUp(mode) {
+    const tokens = lu.analysis.tokens;
+    const at = unitAt();
+    const out = [];
+    let para = -1;
+    const paraOf = new Map();
+    lu.analysis.paragraphs.forEach((p, pi) => p.tokens.forEach((t) => paraOf.set(t.id, pi)));
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      const p = paraOf.get(t.id);
+      if (p !== para) {
+        if (para !== -1) out.push(mode === 'plain' ? '\n' : '</p><p>');
+        para = p;
+      }
+      const hit = at.get(i);
+      if (hit && !hit.first) continue;
+      if (hit) {
+        const u = hit.u;
+        const last = tokens[u.ids[u.ids.length - 1]];
+        let shown = u.chosen || unitOriginal(u);
+        let post = last.post;
+        // fronted adverbials need a comma after them
+        if (u.chosen && u.kind === 'fronted' && !/^\s*,/.test(post)) post = ',' + post;
+        if (mode === 'plain') { out.push(t.pre + shown + post); continue; }
+        const cls = u.chosen ? `swapped tier-${u.tier}` : 'plain';
+        if (mode === 'after') {
+          out.push(esc(t.pre) + (u.chosen ? `<mark class="swap">${esc(shown)}</mark>` : esc(shown)) + esc(post));
+        } else {
+          out.push(`${esc(t.pre)}<button class="lu-word ${cls}" data-unit="${lu.units.indexOf(u)}" aria-label="${esc(shown)}${u.chosen ? ', levelled up' : ', plain word – tap to level up'}">${esc(shown)}</button>${esc(post)}`);
+        }
+        shown = null;
+        continue;
+      }
+      // a / an before a swapped word
+      let text = t.text;
+      const nextHit = at.get(i + 1);
+      if (/^an?$/i.test(text) && nextHit && nextHit.first && nextHit.u.chosen) {
+        const an = /^[aeiou]/i.test(nextHit.u.chosen) && !/^(uni|use|eu|one)/i.test(nextHit.u.chosen);
+        text = (/^A/.test(text) ? 'A' : 'a') + (an ? 'n' : '');
+      }
+      if (mode === 'plain') { out.push(t.pre + text + t.post); continue; }
+      if (mode === 'html' && ['noun', 'verb', 'adjective', 'adverb'].includes(t.cls) && /[a-z]/i.test(text)) {
+        out.push(`${esc(t.pre)}<button class="lu-word other" data-tok="${i}">${esc(text)}</button>${esc(t.post)}`);
+      } else {
+        out.push(esc(t.pre + text + t.post));
+      }
+    }
+    return mode === 'plain' ? out.join('').trim() : '<p>' + out.join('') + '</p>';
+  }
+
+  function renderLevelUpResult(level) {
+    const plain = lu.units.filter((u) => !u.extra);
+    const done = lu.units.filter((u) => u.chosen);
+    const challenge = done.filter((u) => u.tier === 'challenge').length;
+    const ambitious = done.filter((u) => u.tier === 'ambitious').length;
+    const levelled = plain.filter((u) => u.chosen).length;
+    let summary;
+    if (!plain.length) {
+      summary = '🌟 We didn’t spot any plain words. Great writing! You can still tap any word to look for an upgrade.';
+    } else {
+      const stars = plain.map((u) => (u.chosen ? '⭐' : '☆')).join('');
+      summary = `<span class="stars" aria-hidden="true">${stars}</span> We found <strong>${plain.length}</strong> plain word${plain.length === 1 ? '' : 's'}. You’ve levelled up <strong>${levelled}</strong>!` +
+        (levelled === plain.length ? ' 🎉 Every plain word has been upgraded!' : '');
+    }
+    const after = done.length ? buildLevelUp('after') : '';
+    app.innerHTML = `
+      ${luHead(level)}
+      <div class="toolbar" role="toolbar" aria-label="Level up tools">
+        <button class="btn small" id="lu-edit">✏️ Change writing</button>
+        <span class="spacer"></span>
+        <button class="btn small ghost" id="lu-hear">🔊 Read aloud</button>
+        <button class="btn small ghost" id="lu-undo" ${done.length ? '' : 'disabled'}>↩️ Undo all</button>
+      </div>
+      <div class="lu-summary">${summary}
+        ${level === 'upper' && done.length ? `<div class="small" style="margin-top:6px">🚀 ${challenge} challenge word${challenge === 1 ? '' : 's'} · ✨ ${ambitious} ambitious word${ambitious === 1 ? '' : 's'}</div>` : ''}
+      </div>
+      <p class="legend-hint" style="margin:12px 0">
+        <span class="lu-key plain">plain word</span> Tap an underlined word to level it up.
+        <span class="lu-key swapped">levelled up</span> Tap any other word to search for an upgrade.
+      </p>
+      <article class="reading lu-reading" id="lu-reading" lang="en">${buildLevelUp('html')}</article>
+      ${done.length ? `
+        <section class="card lu-compare">
+          <div class="lu-before"><h3>Before</h3>${lu.analysis.paragraphs.filter((p) => !p.blank).map((p) => `<p>${esc(p.tokens.map((t) => t.pre + t.text + t.post).join(''))}</p>`).join('')}</div>
+          <div class="lu-after"><h3>⚡ After</h3>${after}</div>
+          <div class="input-actions">
+            <button class="btn" id="lu-hear-new">🔊 Hear my new writing</button>
+            <button class="btn" id="lu-copy">📋 Copy</button>
+            <button class="btn primary" id="lu-save">⭐ Save new words to my word bank</button>
+          </div>
+        </section>` : ''}`;
+
+    $('#lu-edit').onclick = () => { lu.editing = true; renderLevelUp(); $('#lu-in').focus(); };
+    $('#lu-hear').onclick = () => speak(buildLevelUp('plain'));
+    $('#lu-undo').onclick = () => {
+      lu.units = lu.units.filter((u) => !u.extra);
+      lu.units.forEach((u) => { u.chosen = null; u.tier = null; });
+      renderLevelUp();
+    };
+    $('#lu-reading').addEventListener('click', (ev) => {
+      const b = ev.target.closest('.lu-word');
+      if (!b) return;
+      if (b.dataset.unit != null) openLevelUpPicker(lu.units[+b.dataset.unit], level);
+      else openApiPicker(+b.dataset.tok, level);
+    });
+    if (done.length) {
+      $('#lu-hear-new').onclick = () => speak(buildLevelUp('plain'));
+      $('#lu-copy').onclick = () => copyText(buildLevelUp('plain'));
+      $('#lu-save').onclick = () => {
+        const sentenceAfter = buildLevelUp('plain');
+        done.forEach((u) => {
+          const word = u.chosen.replace(/,$/, '');
+          const sentence = sentenceFor(u, sentenceAfter);
+          bank.add({ word: word.toLowerCase() === word ? word : word.charAt(0).toLowerCase() + word.slice(1), cls: u.cls, replaced: unitOriginal(u), sentence, definition: '', example: '', synonyms: [] });
+        });
+        toast(`⭐ ${done.length} new word${done.length === 1 ? '' : 's'} saved to your word bank`);
+      };
+    }
+  }
+
+  // the levelled-up sentence that contains a unit
+  function sentenceFor(u, whole) {
+    const parts = whole.match(/[^.!?]+[.!?]+["'”’]?|[^.!?]+$/g) || [whole];
+    return (parts.find((s) => s.includes(u.chosen)) || whole).trim();
+  }
+
+  function copyText(text) {
+    const done = () => toast('📋 Copied! You can paste it into your work.');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else fallbackCopy(text, done);
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Sorry – copying isn’t allowed here.'); }
+    ta.remove();
+  }
+
+  function luSentenceHtml(u) {
+    const tokens = lu.analysis.tokens;
+    const first = tokens[u.ids[0]];
+    const ts = tokens.filter((t) => t.sentence === first.sentence);
+    return ts.map((t, k) => {
+      const text = (k ? t.pre : '') + t.text + (k === ts.length - 1 ? t.post.trimEnd() : t.post);
+      return u.ids.includes(tokens.indexOf(t)) ? `<mark class="c-${u.cls}">${esc(text.trim())}</mark>${/\s$/.test(text) ? ' ' : ''}` : esc(text);
+    }).join('');
+  }
+
+  function pickerHtml(u, title, why, groups, loading) {
+    const cls = u.cls;
+    return `
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title">${esc(title)}</h2>
+          ${badge(cls, clsInfo(cls).label)}
+        </div>
+        <button class="close" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        ${why ? `<section class="note">💡 ${esc(why)}</section>` : ''}
+        <section>
+          <h3>📝 In your writing</h3>
+          <div class="context">${luSentenceHtml(u)}</div>
+        </section>
+        <section id="lu-options">
+          ${loading ? '<div class="loading"><span class="spinner"></span> Finding better words…</div>' : optionGroups(groups)}
+        </section>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="lu-hear-word">🔊 Hear it</button>
+        <button class="btn" id="lu-keep" aria-label="Keep “${esc(unitOriginal(u))}”">↩️ Keep my word</button>
+      </div>`;
+  }
+
+  function optionGroups(groups) {
+    if (!groups.length || !groups.some((g) => g.words.length)) {
+      return '<p class="muted">We couldn’t find any upgrades for this word. Sometimes the word you have is already the best one!</p>';
+    }
+    return groups.filter((g) => g.words.length).map((g) => `
+      <h3>${LU_TIER[g.tier][0]} ${LU_TIER[g.tier][1] ? `<span class="muted small" style="font-weight:400">– ${LU_TIER[g.tier][1]}</span>` : ''}</h3>
+      <div class="lu-options">${g.words.map((w) => `<button class="lu-opt tier-${g.tier}" data-word="${esc(w)}" data-tier="${g.tier}">${esc(w)}</button>`).join('')}</div>`).join('');
+  }
+
+  function wirePicker(modal, u) {
+    $('#lu-hear-word', modal).onclick = () => speak(u.chosen || unitOriginal(u));
+    $('#lu-keep', modal).onclick = () => {
+      u.chosen = null; u.tier = null;
+      if (u.extra) lu.units.splice(lu.units.indexOf(u), 1);
+      closeModal();
+      renderLevelUp();
+    };
+    $('#lu-options', modal).addEventListener('click', (ev) => {
+      const b = ev.target.closest('.lu-opt');
+      if (!b) return;
+      const before = unitOriginal(u);
+      u.chosen = b.dataset.word;
+      u.tier = b.dataset.tier;
+      if (u.extra && !lu.units.includes(u)) lu.units.push(u);
+      closeModal();
+      renderLevelUp();
+      toast(`⚡ ${before} → ${u.chosen}`);
+    });
+  }
+
+  function openLevelUpPicker(u, level) {
+    const first = lu.analysis.tokens[u.ids[0]];
+    const capital = /^[A-Z]/.test(first.text);
+    const groups = window.LevelUp.suggestions(u, level, window.Grammar.inflect, capital);
+    const e = window.LevelUp.ENTRIES[u.key];
+    const why = u.kind === 'very'
+      ? `Instead of “${unitOriginal(u)}”, use ONE powerful word. It makes your writing sharper!`
+      : e.why;
+    const modal = openModal(pickerHtml(u, unitOriginal(u), why, groups), u.cls);
+    wirePicker(modal, u);
+  }
+
+  // any other word: look for synonyms online
+  function openApiPicker(i, level) {
+    const t = lu.analysis.tokens[i];
+    const existing = lu.units.find((x) => x.ids.includes(i));
+    if (existing) { openLevelUpPicker(existing, level); return; }
+    const ex = window.Grammar.explain(lu.analysis, t);
+    const u = { ids: [i], key: null, cls: t.cls, form: ex.form, kind: 'extra', extra: true, chosen: null, tier: null };
+    const capital = /^[A-Z]/.test(t.text);
+    const modal = openModal(pickerHtml(u, t.text, '', [], true), t.cls);
+    wirePicker(modal, u);
+    const fix = (w) => window.LevelUp.shape(w, ex.form, window.Grammar.inflect, capital);
+    const word = ex.lookup || t.text.toLowerCase();
+    const req = level === 'upper'
+      ? window.Lookup.richSynonyms(word, t.cls).then((list) => {
+        const by = (tier) => list.filter((x) => x.tier === tier).slice(0, 10).map((x) => fix(x.word));
+        const groups = [{ tier: 'challenge', words: by('challenge') }, { tier: 'ambitious', words: by('ambitious') }];
+        if (!groups[0].words.length && !groups[1].words.length) groups.push({ tier: 'lower', words: by('everyday') });
+        return groups;
+      })
+      : window.Lookup.synonyms(word, t.cls).then((list) => [{ tier: 'lower', words: list.slice(0, 8).map(fix) }]);
+    req.then((groups) => {
+      const box = $('#lu-options', modal);
+      if (!box || !modal.isConnected) return;
+      groups.forEach((g) => { g.words = Array.from(new Set(g.words)).filter((w) => w.toLowerCase() !== t.text.toLowerCase()); });
+      box.innerHTML = optionGroups(groups);
+    }).catch(() => {
+      const box = $('#lu-options', modal);
+      if (box) box.innerHTML = offlineMsg();
+    });
+  }
+
   // ================================================================ BANK
   let bankFilter = '';
   let bankSearch = '';
@@ -1072,6 +1435,7 @@
         <h3>${esc(e.word)}</h3>
         ${e.definition ? `<p class="def">${esc(e.definition)}</p>` : ''}
         ${e.sentence ? `<p class="ctx">“${highlightInSentence(e.sentence, e.word, e.cls)}”</p>` : e.example ? `<p class="ctx">“${esc(e.example)}”</p>` : ''}
+        ${e.replaced ? `<p class="syn"><strong>⚡ Levelled up from:</strong> ${esc(e.replaced)}</p>` : ''}
         ${e.synonyms && e.synonyms.length ? `<p class="syn"><strong>Synonyms:</strong> ${esc(e.synonyms.join(', '))}</p>` : ''}
         <div class="row">
           <button class="btn small" data-say="${esc(e.word)}">🔊 Hear it</button>

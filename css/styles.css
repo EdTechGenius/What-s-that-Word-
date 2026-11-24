@@ -429,3 +429,48 @@ mark.hl { background: #FFE066; color: inherit; padding: 0 3px; border-radius: 4p
 .feedback.good { background: #EBFBEE; border: 2px solid #8CE99A; }
 .feedback.try { background: #FFF4E6; border: 2px solid #FFC078; }
 .tips { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: 15px; }
+
+/* ---------- Level Up! ---------- */
+.corner.levelup { background: linear-gradient(160deg, #FFF3BF, #FFD8A8); }
+.corner .sample .lu-demo-old { background: #fff; border-bottom: 3px dashed #F08C2E; text-decoration: line-through; color: var(--muted); }
+.corner .sample .lu-demo-new { background: #D3F9D8; border-bottom: 3px solid #2F9E44; font-weight: 700; }
+@media (min-width: 600px) { .corners:not(.levels) { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .corners:not(.levels) { grid-template-columns: repeat(4, 1fr); } .corner { padding: 24px; } .corner h2 { font-size: 24px; } }
+
+.lu-summary { padding: 14px 18px; border-radius: var(--radius); background: #fff; box-shadow: var(--shadow); font-size: 18px; }
+.lu-summary .stars { font-size: 22px; letter-spacing: 2px; margin-right: 6px; }
+.lu-reading { background: #FFFDF7; line-height: 2.2; }
+.lu-word {
+  border: 0; background: transparent; font: inherit; color: inherit; padding: 0 .1em; margin: 0; border-radius: .2em;
+  cursor: pointer; line-height: 1.4; -webkit-tap-highlight-color: transparent;
+}
+.lu-word.other:hover { background: #F1F3F5; }
+.lu-word.plain {
+  background: #FFF4E6; text-decoration: underline wavy #F08C2E; text-decoration-thickness: 2px; text-underline-offset: .22em;
+  animation: nudge 2.4s ease-in-out infinite;
+}
+.lu-word.swapped { background: #D3F9D8; box-shadow: inset 0 -.14em 0 #2F9E44; font-weight: 700; }
+.lu-word.swapped.tier-challenge { background: #E5DBFF; box-shadow: inset 0 -.14em 0 #7048E8; }
+@keyframes nudge { 0%, 100% { background: #FFF4E6; } 50% { background: #FFE8CC; } }
+.lu-key { display: inline-block; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: 600; margin: 0 4px 0 8px; }
+.lu-key.plain { background: #FFF4E6; text-decoration: underline wavy #F08C2E; }
+.lu-key.swapped { background: #D3F9D8; box-shadow: inset 0 -3px 0 #2F9E44; }
+
+.lu-options { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.lu-opt {
+  min-height: 48px; padding: 0 18px; border-radius: 14px; border: 2px solid var(--line); background: #fff;
+  font-weight: 600; font-size: 18px; box-shadow: 0 3px 0 var(--line);
+}
+.lu-opt:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.lu-opt.tier-challenge { border-color: #9775FA; background: #F3F0FF; box-shadow: 0 3px 0 #9775FA; }
+.lu-opt.tier-ambitious { border-color: #FFA94D; background: #FFF4E6; box-shadow: 0 3px 0 #FFA94D; }
+.lu-opt.tier-lower { border-color: #69DB7C; background: #EBFBEE; box-shadow: 0 3px 0 #69DB7C; }
+
+.lu-compare { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+.lu-compare .input-actions { grid-column: 1 / -1; }
+.lu-compare h3 { font-size: 18px; font-weight: 800; }
+.lu-compare p { margin: 0 0 8px; font-size: 19px; line-height: 1.7; }
+.lu-before p { color: var(--ink-soft); }
+mark.swap { background: #D3F9D8; box-shadow: inset 0 -3px 0 #2F9E44; padding: 0 3px; border-radius: 4px; font-weight: 700; color: inherit; }
+@media (max-width: 700px) { .lu-compare { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .lu-word.plain { animation: none; } }
