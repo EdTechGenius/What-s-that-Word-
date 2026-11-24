@@ -207,9 +207,11 @@
       if (w === 'who' || w === 'whom' || w === 'which' || w === 'what') {
         return r('pronoun', i === 0 || (prev && /[.!?]\s*$/.test(prev.post)) ? 'question' : 'relative');
       }
-      if ((w === 'when' || w === 'where') && prev) return r('conjunction', 'subordinating');
+      if ((w === 'when' || w === 'where') && (prev || !isQuestion(tokens, i))) return r('conjunction', 'subordinating');
       return r('adverb', 'question');
     }
+
+    if (w === 'others' || (w === 'other' && !nextNounish && prev && bare(prev.normal) === 'the')) return r('pronoun', 'indefinite');
 
     // pronouns
     if (has(t, 'Pronoun') || SUBJECT_PRON.has(w) || OBJECT_PRON.has(w) || POSSESSIVE_PRON.has(w) ||
@@ -330,6 +332,66 @@
     } catch (e) { return false; }
   }
 
+  function isQuestion(tokens, i) {
+    const s = tokens[i].sentence;
+    let k = i;
+    while (tokens[k + 1] && tokens[k + 1].sentence === s) k++;
+    return /\?/.test(tokens[k].post);
+  }
+
+  // words that can be adverbs without -ly: "fell straight into", "builds up underground"
+  const FLAT_ADVERBS = new Set('straight underground fast hard high low late early deep far upstairs downstairs home outside inside overseas abroad back forward backward overhead'.split(' '));
+  const VERB_SUBS = ['present', 'base', 'command', null];
+
+  /**
+   * Second pass: fix patterns the tagger gets wrong, now that every word has a first label.
+   */
+  function fixups(tokens) {
+    const same = (a, b) => a && b && a.sentence === b.sentence;
+    const word = (t) => (t ? bare(t.normal || t.text) : '');
+    tokens.forEach((t, i) => {
+      const prev = same(t, tokens[i - 1]) ? tokens[i - 1] : null;
+      const prev2 = same(t, tokens[i - 2]) ? tokens[i - 2] : null;
+      const next = same(t, tokens[i + 1]) ? tokens[i + 1] : null;
+      const nextOK = next && !/[,.;:!?]/.test(t.post);
+
+      // "was" before an adjective is a being verb, not a helping verb
+      if (t.cls === 'verb' && t.sub === 'auxiliary' && has(t, 'Copula') && next && next.cls === 'adjective') t.sub = 'being';
+
+      // "the fishing boats needed help": determiner + noun + [-s word tagged as a verb] + [-ed word] -> noun, verb
+      if (t.cls === 'verb' && /s$/.test(word(t)) && prev && ['noun', 'adjective'].includes(prev.cls) && prev2 && prev2.cls === 'determiner' &&
+          nextOK && /ed$/.test(word(next)) && ['adjective', 'verb'].includes(next.cls)) {
+        t.cls = 'noun'; t.sub = 'plural';
+        next.cls = 'verb'; next.sub = 'past';
+      }
+
+      // "When pressure builds": a word tagged as a verb, followed by a verb ending in -s, is the noun doing it
+      if (t.cls === 'verb' && VERB_SUBS.includes(t.sub) && nextOK && next.cls === 'verb' && /s$/.test(word(next)) &&
+          !/s$/.test(word(t)) && (!prev || ['conjunction', 'determiner', 'adjective', 'preposition'].includes(prev.cls))) {
+        t.cls = 'noun'; t.sub = null;
+      }
+
+      // "others ooze lava": a word tagged as a noun straight after a subject pronoun is the verb
+      if (t.cls === 'noun' && !t.sub && prev && prev.cls === 'pronoun' && ['personal', 'indefinite'].includes(prev.sub) &&
+          !/[,.;:!?]/.test(prev.post) && looksLikeVerb(word(t)) && !(next && next.cls === 'verb')) {
+        t.cls = 'verb'; t.sub = 'present';
+      }
+
+      // "fell straight into", "builds up underground": adverbs that look like adjectives
+      if (t.cls === 'adjective' && FLAT_ADVERBS.has(word(t)) && prev && (prev.cls === 'verb' || (prev.cls === 'adverb' && PARTICLES.has(word(prev)))) &&
+          !(prev.cls === 'verb' && (prev.sub === 'being' || has(prev, 'Copula'))) &&
+          !(nextOK && ['noun', 'propernoun', 'adjective'].includes(next.cls))) {
+        t.cls = 'adverb'; t.sub = advType(word(t)) || 'place';
+      }
+
+      // "Oh dear!", "Oh no!", "Oh my goodness!": the whole phrase is an interjection
+      if (prev && prev.cls === 'interjection' && !/[,.;:!?]/.test(prev.post) &&
+          ['dear', 'no', 'my', 'goodness', 'gosh', 'wow', 'yes', 'well', 'boy'].includes(word(t)) && (!next || /[!?.]/.test(t.post) || word(next) === 'goodness')) {
+        t.cls = 'interjection'; t.sub = null;
+      }
+    });
+  }
+
   function advType(w) {
     if (/ly$/.test(w) && !FREQ_ADV.has(w)) return 'manner';
     if (FREQ_ADV.has(w)) return 'frequency';
@@ -358,10 +420,7 @@
         t.cls = c.cls; t.sub = c.sub; t.id = id++;
         maxS = Math.max(maxS, t.sentence);
       });
-      tokens.forEach((t, i) => {
-        const n = tokens[i + 1];
-        if (t.cls === 'verb' && t.sub === 'auxiliary' && has(t, 'Copula') && n && n.sentence === t.sentence && n.cls === 'adjective') t.sub = 'being';
-      });
+      fixups(tokens);
       tokens.forEach((t) => { t.sentence += sentenceOffset; });
       sentenceOffset += maxS + 1;
       result.paragraphs.push({ tokens });

@@ -38,6 +38,26 @@ a.tokens.forEach((t) => {
 });
 assert.strictEqual(G.inflect('awaken', 'past'), 'awakened');
 assert.strictEqual(G.inflect('warrior', 'plural'), 'warriors');
+// The sample texts pupils see first must be coloured correctly
+{
+  const check = (text, want) => {
+    const toks = G.analyse(text).tokens;
+    for (const [w, cls] of Object.entries(want)) {
+      const t = toks.find((x) => x.text === w);
+      assert.ok(t, `"${w}" found in: ${text}`);
+      assert.strictEqual(t.cls, cls, `"${w}" in: ${text}`);
+    }
+  };
+  check('Mira grabbed her torch and raced down the winding path because she knew the fishing boats needed help.', { boats: 'noun', needed: 'verb', winding: 'adjective' });
+  check('When pressure builds up underground, hot melted rock called magma rises towards the surface.', { When: 'conjunction', pressure: 'noun', builds: 'verb', underground: 'adverb', rises: 'verb' });
+  check('Some volcanoes erupt violently, but others ooze lava gently down their slopes.', { others: 'pronoun', ooze: 'verb', lava: 'noun', erupt: 'verb' });
+  check('The proud crow opened her beak to sing, and the cheese fell straight into the clever fox\'s mouth. Oh dear!', { straight: 'adverb', Oh: 'interjection', dear: 'interjection', proud: 'adjective' });
+  check('When did you arrive?', { When: 'adverb' });
+  check('She walked down the straight road. He was fast.', { straight: 'adjective', fast: 'adjective' });
+  check('Dear Sam, thank you for the present.', { Sam: 'propernoun' });
+  console.log('Sample text checks passed.');
+}
+
 // Word forms: never invent words (audit: "petrifiedded", "pept", "gladest", "more enormous")
 const W = require('../js/wordforms.js');
 const VERBS = {
