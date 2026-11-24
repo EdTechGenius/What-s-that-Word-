@@ -3,7 +3,7 @@
  * Dictionary/thesaurus answers: fetched live, with a cached copy as a fallback. */
 const VERSION = 'wtw-v14';
 const SHELL = [
-  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/wordforms.js', 'js/grammar.js', 'js/lookup.js', 'js/wordparts.js', 'js/levelup.js', 'js/figurative.js', 'js/peat.js',
+  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/wordforms.js', 'js/grammar.js', 'js/lookup.js', 'js/wordparts.js', 'js/levelup.js', 'js/figurative.js', 'js/peat.js', 'js/audioclips.js', 'audio/index.json',
   'vendor/compromise.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/apple-touch-icon.png',
   'fonts/opendyslexic-latin-400-normal.woff2', 'fonts/opendyslexic-latin-700-normal.woff2', 'fonts/opendyslexic-latin-400-italic.woff2',

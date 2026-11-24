@@ -147,6 +147,21 @@ assert.ok(P.check(find('boys'), 'I was tired so I slept.', G).some((r) => r.ok =
 assert.ok(P.check(find('3bad'), 'Pain, fear, hunger – what next.', G).some((r) => r.ok === false), '3 bad needs a question mark');
 console.log('Alan Peat sentence checks passed.');
 
+// Pre-recorded audio: every fixed example should have a recording
+{
+  const fs = require('fs');
+  const path = require('path');
+  const A = require('../js/audioclips.js');
+  const idx = path.join(__dirname, '..', 'audio', 'index.json');
+  if (fs.existsSync(idx)) {
+    const clips = JSON.parse(fs.readFileSync(idx, 'utf8')).clips;
+    const all = [...F.DEVICES.flatMap((d) => d.examples.map((e) => F.plain(e.t))), ...P.TYPES.flatMap((t) => t.examples.map((e) => P.plain(e)))];
+    const missing = all.filter((t) => !clips[A.key(t)] || !fs.existsSync(path.join(__dirname, '..', 'audio', clips[A.key(t)])));
+    if (missing.length) console.log(`Note: ${missing.length} example(s) have no recording yet and will use the device voice. Run tools/make-audio.mjs to record them.`);
+    else console.log(`Audio checks passed (${all.length} recordings).`);
+  }
+}
+
 // word parts (with a tiny pretend dictionary)
 const WP = require('../js/wordparts.js');
 const known = new Set(['petrify', 'happy', 'unhappy', 'hope', 'port', 'transport', 'comfortable']);

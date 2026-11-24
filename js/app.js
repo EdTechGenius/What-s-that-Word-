@@ -90,7 +90,24 @@
     pickVoice();
     speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', pickVoice);
   }
+  // pre-recorded audio for the fixed example sentences (audio/index.json); everything else uses the device voice
+  let clips = {};
+  let playing = null;
+  fetch('audio/index.json').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.clips) clips = d.clips; }).catch(() => {});
+
   function speak(text) {
+    if (playing) { playing.pause(); playing = null; }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    const file = window.AudioClips && clips[window.AudioClips.key(text)];
+    if (file) {
+      playing = new Audio('audio/' + file);
+      playing.play().catch(() => { playing = null; speakWithDevice(text); });
+      return;
+    }
+    speakWithDevice(text);
+  }
+
+  function speakWithDevice(text) {
     if (!('speechSynthesis' in window)) { toast('Sorry – this device can’t read aloud.'); return; }
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);

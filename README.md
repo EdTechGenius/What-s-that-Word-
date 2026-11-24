@@ -4,6 +4,13 @@ A classroom text tool for teachers and pupils that works in any web browser and 
 
 ## The areas
 
+The menu has three areas, each with an icon and a label:
+* **🔍 Explore words**: Glorious Grammar and Vivid Vocabulary
+* **✍️ Improve my writing**: Level Up!, Figurative Language and Alan Peat Sentences
+* **📓 My Notebook**
+
+Tabs under the top bar switch between the pages in an area.
+
 ### ✏️ Glorious Grammar
 * Pupils type or paste any text, then press **Colour my words**.
 * Every word is highlighted in the colour of its word class: noun, proper noun, verb, adjective, adverb, pronoun, determiner, preposition, conjunction or interjection. A short label (N, V, Adj…) can be shown under each word.
@@ -22,17 +29,17 @@ A classroom text tool for teachers and pupils that works in any web browser and 
 Pupils first choose **Lower primary** or **Upper primary**. The choice is remembered, and they can switch at any time.
 
 **Lower primary**
-* Type any word to get its pronunciation, every word class it can belong to, its definitions with examples, synonyms and opposites.
+* Type any word to get its pronunciation, every word class it can belong to, its main meaning with an example (tap **Show more meanings** for the rest), synonyms and opposites.
 * The thesaurus panel groups similar words by word class. For nouns it suggests **adjectives to describe** the noun, and for adjectives it lists the things they can describe.
 
 **Upper primary** (everything above, plus):
 * A **word level** for the searched word: 👍 Everyday, ✨ Ambitious or 🚀 Challenge, based on how often it is used.
-* All the meanings for each word class it can be (e.g. *petrified* as an adjective **and** as a verb), with **example sentences** in which the word is highlighted, and a grammar tip for using it.
-* A much bigger thesaurus for **each** word class, sorted into 🚀 Challenge, ✨ Ambitious and 👍 Everyday words.
+* The two main meanings for each word class it can be (e.g. *petrified* as an adjective **and** as a verb), with more available on tap, **example sentences** in which the word is highlighted, and a grammar tip for using it (including the correct tenses, e.g. *petrifies / petrified / petrifying*).
+* A bigger thesaurus for **each** word class, sorted into 🚀 Challenge, ✨ Ambitious and 👍 Everyday words (up to 8 of each).
 * **Word detective**: word parts (e.g. *petr* (rock, Greek) + *-ify* (to make) + *-ed*), the word family, and phrases the word is often found in.
 * **Your turn**: pupils write their own sentence using the word, and the grammar checker tells them which word class they used it as. It also reminds them about capital letters and end punctuation, and they can save the sentence to their notebook.
 
-Spelling suggestions ("Did you mean…?") appear when a word isn't found.
+Spelling suggestions ("Did you mean…?") appear when a word isn't found. Words and definitions fetched online are changed to British spellings (*fossilized* → *fossilised*, *color* → *colour*).
 
 ### 🔤 Dyslexia-friendly font
 Switch on **Dyslexia-friendly font** on the home page, or tap **Aa** in the top bar on any page, to show the whole tool in [OpenDyslexic](https://opendyslexic.org) (SIL Open Font License, bundled in `fonts/`). The setting is remembered on that device.
@@ -106,13 +113,31 @@ and open http://localhost:8000.
 | `js/figurative.js` | All the Figurative Language content (definitions, examples, themes) and the "Try it yourself" checks. |
 | `js/peat.js` | The Alan Peat sentence types, examples and checklist rules. |
 | `js/wordparts.js` | Splits words into prefixes, roots and suffixes for the Word detective. |
+| `js/wordforms.js` | Changes words into their other forms with British spelling rules (*stop → stopped*, *glum → glummer*, *petrified → petrify*) and a table of about 150 irregular verbs. Everything that changes a word's form uses it, so the app never invents words. |
+| `js/audioclips.js` and `audio/` | Pre-recorded audio for the fixed example sentences (see below). |
 | `js/app.js` | The pages, word cards, read-aloud and the notebook. |
 | `sw.js` | Lets the app open offline and remembers words that were looked up before. |
 
 Automatic grammar tagging is very good but not perfect. English words often change class depending on how they are used, and the tool will occasionally get a word wrong. That can make a good class discussion: "Do you agree? Why?"
 
-Run the grammar checks with:
+Run the checks with:
 
 ```bash
 node tests/grammar.test.js
 ```
+
+An extra check looks up **every** word form the app can generate in a British English dictionary. It needs two small free packages, used only for this check: nspell (MIT, 42 KB) and dictionary-en-gb (MIT and BSD, 0.6 MB).
+
+```bash
+npm install --no-save nspell@2 dictionary-en-gb@3
+```
+
+```bash
+node tests/dictionary-check.mjs
+```
+
+## Read aloud
+
+* The 🔊 buttons on the Figurative Language and Alan Peat example sentences play **pre-recorded audio** made with the free [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) voice (Apache-2.0 licence, British voice *bf_emma*). The recordings are small MP3 files in `audio/`, so nothing extra is downloaded on pupils' devices.
+* Everything else (looked-up words, pupils' own writing) is read by the device's own voice, choosing a British voice when one is available.
+* After adding or changing example sentences, record the new ones with `tools/make-audio.mjs` (instructions at the top of that file). Sentences without a recording simply use the device's voice.
