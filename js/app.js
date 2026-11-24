@@ -1,10 +1,13 @@
 /*
  * app.js — the What's That Word? interface.
  * Pages (hash routes):
- *   #/           home – choose a corner
- *   #/grammar    Glorious Grammar Corner – colour-coded text, tap a word for its card
- *   #/vocab/word Vivid Vocabulary Corner – dictionary + thesaurus
- *   #/bank       My Word Bank
+ *   #/           home – choose an area
+ *   #/grammar    Glorious Grammar – colour-coded text, tap a word for its card
+ *   #/vocab/word Vivid Vocabulary – dictionary + thesaurus
+ *   #/levelup    Level Up! – improve a piece of writing
+ *   #/figurative Figurative Language – techniques and examples
+ *   #/peat       Alan Peat Sentences – sentence types
+ *   #/notebook   My Notebook – word bank + sentences
  */
 (function () {
   'use strict';
@@ -58,7 +61,12 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const FIG_INFO = { label: 'Figurative language', short: 'Fig', emoji: '🎨', kid: '' };
   const PEAT_INFO = { label: 'Alan Peat sentence', short: 'AP', emoji: '🧱', kid: '' };
-  const clsInfo = (cls) => (cls === 'figurative' ? FIG_INFO : cls === 'peat' ? PEAT_INFO : CLASSES[cls] || CLASSES.other);
+  const EXTRA_INFO = {
+    figurative: FIG_INFO, peat: PEAT_INFO,
+    levelup: { label: 'Levelled-up writing', short: 'LU', emoji: '⚡', kid: '' },
+    own: { label: 'My sentence', short: '✍️', emoji: '✍️', kid: '' },
+  };
+  const clsInfo = (cls) => EXTRA_INFO[cls] || CLASSES[cls] || CLASSES.other;
   const badge = (cls, text) => `<span class="badge c-${esc(cls)}"><span class="swatch"></span>${esc(text || clsInfo(cls).label)}</span>`;
 
   let toastTimer;
@@ -92,7 +100,7 @@
     speechSynthesis.speak(u);
   }
 
-  // ------------------------------------------------------------ word bank
+  // ------------------------------------------------------------ notebook (stored as 'bank')
   const bank = {
     all() { return store.get('bank', []); },
     key(word, cls) { return (word + '|' + cls).toLowerCase(); },
@@ -118,9 +126,9 @@
   function bankButton(entry, opts) {
     const saved = bank.has(entry.word, entry.cls);
     return `<button class="btn ${opts && opts.small ? 'small' : ''} ${saved ? 'saved' : ''} ${opts && opts.wide ? 'wide' : ''}" data-bank='${esc(JSON.stringify(entry))}'>
-      ${saved ? '✓ In my word bank' : '☆ Add to word bank'}</button>`;
+      ${saved ? '✓ In my notebook' : '☆ Add to notebook'}</button>`;
   }
-  // one listener handles every "add to word bank" button
+  // one listener handles every "add to notebook" button
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-bank]');
     if (!btn) return;
@@ -128,15 +136,15 @@
     if (bank.has(entry.word, entry.cls)) {
       bank.remove(entry.word, entry.cls);
       btn.classList.remove('saved');
-      btn.innerHTML = '☆ Add to word bank';
-      toast(`Removed “${entry.word}” from your word bank`);
+      btn.innerHTML = '☆ Add to notebook';
+      toast(`Removed from your notebook`);
     } else {
       bank.add(entry);
       btn.classList.add('saved');
-      btn.innerHTML = '✓ In my word bank';
-      toast(`⭐ “${entry.word}” added to your word bank`);
+      btn.innerHTML = '✓ In my notebook';
+      toast(entry.word.length > 30 ? '📓 Added to your notebook' : `📓 “${entry.word}” added to your notebook`);
     }
-    if (location.hash.startsWith('#/bank')) renderBank();
+    if (location.hash.startsWith('#/notebook')) renderNotebook(location.hash.split('/')[2]);
   });
 
   // ------------------------------------------------------------ router
@@ -153,7 +161,8 @@
     else if (page === 'levelup') renderLevelUp();
     else if (page === 'figurative') renderFigurative(decodeURIComponent(arg || ''));
     else if (page === 'peat') renderPeat(decodeURIComponent(arg || ''));
-    else if (page === 'bank') renderBank();
+    else if (page === 'notebook') renderNotebook(arg);
+    else if (page === 'bank') { location.replace('#/notebook'); return; }
     else renderHome();
     applyFont();
     app.focus({ preventScroll: true });
@@ -168,7 +177,7 @@
       <section class="hero">
         <p class="eyebrow">Every pupil · every text</p>
         <h1>What’s <em>that</em> word?</h1>
-        <p class="lead">Explore any text word by word. See every word class in colour, find out what words mean, and collect brilliant words in your own word bank.</p>
+        <p class="lead">Explore any text word by word. See every word class in colour, find out what words mean, and collect brilliant words and sentences in your own notebook.</p>
       </section>
       <section class="font-option" aria-label="Reading options">
         <div class="font-option-text">
@@ -183,17 +192,17 @@
           <span class="switch-label">${state.dyslexic ? 'On' : 'Off'}</span>
         </button>
       </section>
-      <section class="corners" aria-label="Choose a corner">
+      <section class="corners" aria-label="Choose an area">
         <a class="corner grammar" href="#/grammar">
           <span class="corner-icon" aria-hidden="true">✏️</span>
-          <h2>Glorious Grammar Corner</h2>
+          <h2>Glorious Grammar</h2>
           <div class="sample" aria-hidden="true">${sample.map(([w, c]) => `<span class="c-${c}">${w}</span>`).join('')}</div>
           <p>Type or paste any text. Every word lights up in the colour of its word class. Tap a word to find out what it is, why, and what it means.</p>
           <span class="go">Start exploring →</span>
         </a>
         <a class="corner vocab" href="#/vocab">
           <span class="corner-icon" aria-hidden="true">📖</span>
-          <h2>Vivid Vocabulary Corner</h2>
+          <h2>Vivid Vocabulary</h2>
           <p>Look up any word. Get its meaning, its word class and lots of synonyms to make your writing sparkle – a dictionary and thesaurus in one.</p>
           <span class="go">Look up a word →</span>
         </a>
@@ -206,7 +215,7 @@
         </a>
         <a class="corner figurative" href="#/figurative">
           <span class="corner-icon" aria-hidden="true">🎨</span>
-          <h2>Figurative Language Corner</h2>
+          <h2>Figurative Language</h2>
           <div class="sample" aria-hidden="true"><span class="fig-demo">as quiet as a mouse</span><span class="fig-demo">Crash!</span></div>
           <p>Similes, metaphors, personification and more, each with examples, what they mean and when to use them.</p>
           <span class="go">Explore techniques →</span>
@@ -218,11 +227,12 @@
           <p>All the sentence types in one place: how each one works, examples, and your own sentences with a checklist.</p>
           <span class="go">Build sentences →</span>
         </a>
-        <a class="corner bank" href="#/bank">
-          <span class="corner-icon" aria-hidden="true">⭐</span>
-          <h2>My Word Bank</h2>
-          <p>All the words you have saved, ready to use in your own writing.</p>
-          <span class="go">Open my word bank →</span>
+        <a class="corner bank" href="#/notebook">
+          <span class="corner-icon" aria-hidden="true">📓</span>
+          <h2>My Notebook</h2>
+          <div class="sample" aria-hidden="true"><span class="nb-demo">📖 Word bank</span><span class="nb-demo">✍️ Sentences</span></div>
+          <p>Your word bank of interesting words, plus all the brilliant sentences you have written and saved.</p>
+          <span class="go">Open my notebook →</span>
         </a>
       </section>
       <p class="home-foot">Tip for iPad: tap the Share button in Safari, then “Add to Home Screen” to use What’s That Word? like an app.</p>`;
@@ -236,7 +246,7 @@
   ];
 
   function renderGrammar() {
-    document.title = 'Glorious Grammar Corner · What’s That Word?';
+    document.title = 'Glorious Grammar · What’s That Word?';
     if (state.text && !state.analysis) {
       try { state.analysis = window.Grammar.analyse(state.text); state.editing = false; } catch (e) { state.editing = true; }
     }
@@ -248,8 +258,8 @@
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">✏️ Corner 1</p>
-          <h1>Glorious <em>Grammar</em> Corner</h1>
+          <p class="eyebrow">✏️ Word classes in colour</p>
+          <h1>Glorious <em>Grammar</em></h1>
         </div>
       </div>
       <p class="lead">Write or paste a piece of text below, then press <strong>Colour my words</strong>. Every word will be highlighted by its word class.</p>
@@ -306,7 +316,7 @@
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">✏️ Glorious Grammar Corner</p>
+          <p class="eyebrow">✏️ Glorious Grammar</p>
           <h1>Tap any word to <em>explore it</em></h1>
         </div>
       </div>
@@ -505,7 +515,7 @@
         refreshBank();
         synEl.innerHTML = shaped.length
           ? `<div class="chips">${shaped.map((s) => `<a class="chip" href="#/vocab/${encodeURIComponent(s)}">${esc(s)}</a>`).join('')}</div>
-             <p class="source">Tap a synonym to explore it in the Vivid Vocabulary Corner.</p>`
+             <p class="source">Tap a synonym to explore it in Vivid Vocabulary.</p>`
           : '<p class="muted" style="margin:0">No synonyms for this word – sometimes the word you have is already the best one!</p>';
       }).catch(() => {
         if (modal.isConnected) synEl.innerHTML = '<p class="muted" style="margin:0">Synonyms need an internet connection.</p>';
@@ -533,15 +543,15 @@
   ];
 
   function renderVocab(word) {
-    document.title = 'Vivid Vocabulary Corner · What’s That Word?';
+    document.title = 'Vivid Vocabulary · What’s That Word?';
     const level = store.get('level', null);
     if (!LEVELS[level]) { renderLevelChoice(word); return; }
     const recent = store.get('recent', []);
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">📖 Corner 2</p>
-          <h1>Vivid <em>Vocabulary</em> Corner</h1>
+          <p class="eyebrow">📖 Dictionary and thesaurus</p>
+          <h1>Vivid <em>Vocabulary</em></h1>
         </div>
         <div class="seg level-switch" role="group" aria-label="Level">
           ${Object.keys(LEVELS).map((l) => `<button data-level="${l}" aria-pressed="${l === level}">${LEVELS[l].emoji} ${LEVELS[l].label}</button>`).join('')}
@@ -575,8 +585,8 @@
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">${isLU ? '⚡ Corner 3' : '📖 Corner 2'}</p>
-          <h1>${isLU ? 'Level <em>Up!</em>' : 'Vivid <em>Vocabulary</em> Corner'}</h1>
+          <p class="eyebrow">${isLU ? '⚡ Improve your writing' : '📖 Dictionary and thesaurus'}</p>
+          <h1>${isLU ? 'Level <em>Up!</em>' : 'Vivid <em>Vocabulary</em>'}</h1>
         </div>
       </div>
       <p class="lead">Who is exploring words today? Choose your level. You can change it at any time.</p>
@@ -1084,7 +1094,7 @@
   function luHead(level) {
     return `<div class="page-head">
         <div>
-          <p class="eyebrow">⚡ Corner 3</p>
+          <p class="eyebrow">⚡ Improve your writing</p>
           <h1>Level <em>Up!</em></h1>
         </div>
         ${levelSwitch(level)}
@@ -1327,7 +1337,7 @@
           <div class="input-actions">
             <button class="btn" id="lu-hear-new">🔊 Hear my new writing</button>
             <button class="btn" id="lu-copy">📋 Copy</button>
-            <button class="btn primary" id="lu-save" ${c.swaps ? '' : 'disabled'}>⭐ Save new words to my word bank</button>
+            <button class="btn primary" id="lu-save">📓 Save to my notebook</button>
           </div>
         </section>` : ''}`;
 
@@ -1364,10 +1374,11 @@
         Object.values(lu.adds.adverb).forEach((a) => {
           bank.add({ word: a.word, cls: 'adverb', sentence: sentenceFor(a.word, whole), definition: '', example: '', synonyms: [] });
         });
+        const original = lu.analysis.paragraphs.filter((p) => !p.blank).map((p) => p.tokens.map((t) => t.pre + t.text + t.post).join('').trim()).join('\n');
+        bank.add({ word: whole, cls: 'levelup', kind: 'sentence', sub: 'Levelled-up writing', replaced: original, definition: '', example: '', sentence: '', synonyms: [] });
         const n = done.length + Object.keys(lu.adds.adverb).length;
-        toast(`⭐ ${n} new word${n === 1 ? '' : 's'} saved to your word bank`);
+        toast(`📓 Your writing${n ? ` and ${n} new word${n === 1 ? '' : 's'}` : ''} saved to your notebook`);
       };
-      $('#lu-save').disabled = !(c.swaps || c.adverb);
     }
   }
 
@@ -1627,7 +1638,7 @@
     const F = window.Figurative;
     const text = F.parts(e.t).map((p) => (p.mark ? `<mark>${esc(p.text)}</mark>` : esc(p.text))).join('');
     const plainText = F.plain(e.t);
-    const entry = { word: plainText, cls: 'figurative', sub: d.name, definition: e.m, example: '', sentence: '', synonyms: [] };
+    const entry = { word: plainText, cls: 'figurative', kind: 'sentence', sub: d.name, definition: e.m, example: '', sentence: '', synonyms: [] };
     return `
       <article class="fig-ex" style="${figStyle(d)}">
         ${showDevice ? `<a class="fig-dev-tag" href="#/figurative/${d.id}">${d.emoji} ${esc(d.name)}</a>` : ''}
@@ -1660,7 +1671,7 @@
   }
 
   function renderFigurative(arg) {
-    document.title = 'Figurative Language Corner · What’s That Word?';
+    document.title = 'Figurative Language · What’s That Word?';
     const d = arg && figDevice(arg);
     if (d) renderFigDevice(d); else renderFigHome();
   }
@@ -1695,8 +1706,8 @@
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">🎨 Corner 4</p>
-          <h1>Figurative <em>Language</em> Corner</h1>
+          <p class="eyebrow">🎨 Creative writing techniques</p>
+          <h1>Figurative <em>Language</em></h1>
         </div>
       </div>
       <p class="lead">Figurative language means using words in a creative, imaginative way, not just for their everyday meaning. Explore 11 techniques, each with examples you can use in your own writing.</p>
@@ -1740,7 +1751,7 @@
     if (figPrompt[d.id] == null) figPrompt[d.id] = 0;
     const prompt = d.prompts[figPrompt[d.id] % d.prompts.length];
     const canCheck = F.check(d.id, 'test') !== null;
-    document.title = `${d.name} · Figurative Language Corner`;
+    document.title = `${d.name} · Figurative Language`;
 
     app.innerHTML = `
       <nav class="fig-nav" aria-label="Techniques">
@@ -1750,7 +1761,7 @@
       <div class="fig-hero" style="${figStyle(d)}">
         <span class="fig-emoji big" aria-hidden="true">${d.emoji}</span>
         <div>
-          <p class="eyebrow" style="color:${d.colour}">🎨 Figurative Language Corner</p>
+          <p class="eyebrow" style="color:${d.colour}">🎨 Figurative Language</p>
           <h1>${esc(d.name)}</h1>
           <p class="fig-short">${esc(d.short)}</p>
         </div>
@@ -1775,7 +1786,7 @@
           <div class="input-actions">
             ${canCheck ? '<button class="btn primary" id="fig-check">✅ Check it</button>' : ''}
             <button class="btn" id="fig-hear-own">🔊 Hear it</button>
-            <button class="btn" id="fig-save-own">☆ Save to word bank</button>
+            <button class="btn" id="fig-save-own">📓 Save to my notebook</button>
           </div>
           <div id="fig-feedback" aria-live="polite">${canCheck ? '' : `<p class="small muted">Read it aloud to a partner. Can they spot the ${esc(d.name.toLowerCase())}?</p>`}</div>
         </section>
@@ -1811,26 +1822,30 @@
     $('#fig-save-own').onclick = () => {
       const v = own.value.trim();
       if (!v) { toast('Write your own example first!'); own.focus(); return; }
-      bank.add({ word: v, cls: 'figurative', sub: `${d.name} (my own)`, definition: '', example: '', sentence: '', synonyms: [] });
-      toast('⭐ Your example has been saved to your word bank');
+      bank.add({ word: v, cls: 'figurative', kind: 'sentence', sub: `${d.name} (my own)`, definition: '', example: '', sentence: '', synonyms: [] });
+      toast('📓 Your example has been saved to your notebook');
     };
   }
 
   // ================================================================ ALAN PEAT SENTENCES
   let peatSet = '';
+  // pupils' Alan Peat sentences are kept in their notebook
   const peatStore = {
-    all() { return store.get('peat', {}); },
+    all() {
+      const out = {};
+      bank.all().filter((e) => e.cls === 'peat' && e.peatId).forEach((e) => {
+        (out[e.peatId] = out[e.peatId] || []).push({ text: e.word, added: e.added });
+      });
+      return out;
+    },
     list(id) { return this.all()[id] || []; },
     add(id, text) {
-      const all = this.all();
-      all[id] = [{ text, added: new Date().toISOString() }].concat(all[id] || []);
-      store.set('peat', all);
+      const t = window.Peat.TYPES.find((x) => x.id === id);
+      bank.add({ word: text, cls: 'peat', kind: 'sentence', sub: t ? t.name : 'Alan Peat sentence', peatId: id, definition: '', example: '', sentence: '', synonyms: [] });
     },
     remove(id, index) {
-      const all = this.all();
-      (all[id] || []).splice(index, 1);
-      if (all[id] && !all[id].length) delete all[id];
-      store.set('peat', all);
+      const item = this.list(id)[index];
+      if (item) bank.remove(item.text, 'peat');
     },
     count() { return Object.values(this.all()).reduce((n, l) => n + l.length, 0); },
   };
@@ -1863,7 +1878,7 @@
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">🧱 Corner 5</p>
+          <p class="eyebrow">🧱 Sentence types</p>
           <h1>Alan Peat <em>Sentences</em></h1>
         </div>
         <a class="btn" href="#/peat/mine">📒 My sentence collection${total ? ` (${total})` : ''}</a>
@@ -1934,12 +1949,11 @@
         </section>
       </div>
       <section class="card peat-mine-list" style="${peatStyle(t)}">
-        <h2>📒 My examples <span class="muted small" style="font-weight:400">(${mine.length})</span></h2>
+        <h2>📒 My examples <span class="muted small" style="font-weight:400">(${mine.length}) · also saved in <a href="#/notebook/sentences">your notebook</a></span></h2>
         ${mine.length ? `<ul class="examples">${mine.map((m, i) => `
           <li><span>${esc(m.text)}</span>
             <span class="peat-mine-actions">
               <button class="icon-btn" data-say="${esc(m.text)}" aria-label="Hear it">🔊</button>
-              ${bankButton({ word: m.text, cls: 'peat', sub: t.name, definition: '', example: '', sentence: '', synonyms: [] }, { small: true })}
               <button class="icon-btn" data-peat-remove="${i}" aria-label="Remove this example">🗑️</button>
             </span></li>`).join('')}</ul>`
         : '<p class="muted" style="margin:0">You haven’t added any examples yet. Write one above and press <strong>➕ Add to my examples</strong>.</p>'}
@@ -1960,7 +1974,7 @@
       const missing = res.filter((r) => r.ok === false).length;
       if (missing && !confirm(`${missing} part${missing === 1 ? ' of the checklist is' : 's of the checklist are'} not ticked yet. Add it anyway?`)) return;
       peatStore.add(t.id, v);
-      toast(missing ? '📒 Added to your examples' : '🎉 Brilliant! Added to your examples');
+      toast(missing ? '📓 Added to your examples and your notebook' : '🎉 Brilliant! Added to your examples and your notebook');
       renderPeatType(t);
     };
     $$('[data-peat-remove]').forEach((b) => {
@@ -2010,69 +2024,166 @@
     }
   }
 
-  // ================================================================ BANK
-  let bankFilter = '';
-  let bankSearch = '';
-  function renderBank() {
-    document.title = 'My Word Bank · What’s That Word?';
+  // ================================================================ NOTEBOOK
+  // My Notebook has two pages: a word bank of interesting words, and sentences.
+  const SENTENCE_SOURCES = {
+    own: { label: 'My sentence', chip: '✍️ My own' },
+    peat: { label: 'Alan Peat sentence', chip: '🧱 Alan Peat' },
+    figurative: { label: 'Figurative language', chip: '🎨 Figurative language' },
+    levelup: { label: 'Levelled-up writing', chip: '⚡ Level Up!' },
+  };
+  const isSentence = (e) => e.kind === 'sentence' || ['figurative', 'peat', 'levelup', 'own'].includes(e.cls);
+  let nbFilter = { words: '', sentences: '' };
+  let nbSearch = { words: '', sentences: '' };
+
+  function renderNotebook(tab) {
+    tab = tab === 'sentences' ? 'sentences' : 'words';
+    document.title = 'My Notebook · What’s That Word?';
     const all = bank.all();
-    const classes = ORDER.concat(['figurative', 'peat']).filter((c) => all.some((e) => e.cls === c));
-    const list = all.filter((e) => (!bankFilter || e.cls === bankFilter) &&
-      (!bankSearch || e.word.toLowerCase().includes(bankSearch.toLowerCase())));
+    const words = all.filter((e) => !isSentence(e));
+    const sents = all.filter(isSentence);
+    const items = tab === 'words' ? words : sents;
+    const q = nbSearch[tab].toLowerCase();
+    const f = nbFilter[tab];
+    const list = items.filter((e) => (!f || e.cls === f) && (!q || e.word.toLowerCase().includes(q) || (e.definition || '').toLowerCase().includes(q)));
+
+    const wordFilters = ORDER.filter((c) => words.some((e) => e.cls === c));
+    const sentFilters = Object.keys(SENTENCE_SOURCES).filter((c) => sents.some((e) => e.cls === c));
+    const filters = tab === 'words'
+      ? wordFilters.map((c) => `<button class="chip ${f === c ? 'on' : ''}" data-f="${c}"><span class="swatch c-${c}"></span>${esc(clsInfo(c).label)}s</button>`).join('')
+      : sentFilters.map((c) => `<button class="chip ${f === c ? 'on' : ''}" data-f="${c}">${esc(SENTENCE_SOURCES[c].chip)}</button>`).join('');
 
     app.innerHTML = `
       <div class="page-head">
         <div>
-          <p class="eyebrow">⭐ My collection</p>
-          <h1>My Word <em>Bank</em></h1>
+          <p class="eyebrow">📓 Words and sentences to use in your writing</p>
+          <h1>My <em>Notebook</em></h1>
         </div>
-        ${all.length ? `<div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn small" id="print-bank">🖨️ Print</button>
-          <button class="btn small ghost" id="clear-bank">Empty word bank</button>
+        ${items.length ? `<div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn small" id="nb-copy">📋 Copy</button>
+          <button class="btn small" id="nb-print">🖨️ Print</button>
         </div>` : ''}
       </div>
-      ${all.length ? `
-        <div class="bank-tools">
-          <input type="search" id="bank-search" placeholder="Find a word…" value="${esc(bankSearch)}" aria-label="Find a word in my word bank">
-          <div class="chips">
-            <button class="chip ${!bankFilter ? 'c-other' : ''}" data-f="" style="${!bankFilter ? 'border-color:var(--ink)' : ''}">All (${all.length})</button>
-            ${classes.map((c) => `<button class="chip" data-f="${c}" style="${bankFilter === c ? `background:var(--${c});border-color:var(--${c}-line)` : ''}"><span class="swatch c-${c}"></span>${esc(c === 'figurative' ? 'Figurative language' : clsInfo(c).label + 's')}</button>`).join('')}
+      <div class="nb-tabs" role="tablist" aria-label="Notebook pages">
+        <a role="tab" href="#/notebook/words" aria-selected="${tab === 'words'}">📖 Word bank <span class="lu-count">${words.length}</span></a>
+        <a role="tab" href="#/notebook/sentences" aria-selected="${tab === 'sentences'}">✍️ Sentences <span class="lu-count">${sents.length}</span></a>
+      </div>
+      <div class="nb-paper">
+        <section class="nb-add no-print">
+          ${tab === 'words' ? `
+            <h2>➕ Add an interesting word</h2>
+            <div class="nb-add-row">
+              <input id="nb-word" type="text" placeholder="Word" autocomplete="off" autocapitalize="none" aria-label="Word">
+              <input id="nb-meaning" type="text" placeholder="What it means (optional)" autocomplete="off" aria-label="What it means">
+              <button class="btn primary" id="nb-add-word">Add</button>
+            </div>` : `
+            <h2>➕ Add a sentence</h2>
+            <textarea id="nb-sentence" rows="2" placeholder="Write a brilliant sentence you want to remember…" spellcheck="true" aria-label="Your sentence"></textarea>
+            <div class="input-actions" style="margin-top:8px"><button class="btn primary" id="nb-add-sentence">Add to my notebook</button></div>`}
+        </section>
+        ${items.length ? `
+          <div class="bank-tools">
+            <input type="search" id="nb-search" placeholder="${tab === 'words' ? 'Find a word…' : 'Find a sentence…'}" value="${esc(nbSearch[tab])}" aria-label="Search my notebook">
+            <div class="chips">
+              <button class="chip ${!f ? 'on' : ''}" data-f="">All (${items.length})</button>
+              ${filters}
+            </div>
           </div>
-        </div>
-        <div class="bank-grid">${list.map(bankCard).join('') || '<p class="muted">No words match.</p>'}</div>` : `
-        <div class="card empty">
-          <div class="big" aria-hidden="true">🌱</div>
-          <h2>Your word bank is empty</h2>
-          <p class="muted">When you find a word you love, tap <strong>☆ Add to word bank</strong> on its card and it will be saved here.</p>
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
-            <a class="btn primary" href="#/grammar">✏️ Grammar Corner</a>
-            <a class="btn" href="#/vocab">📖 Vocabulary Corner</a>
-          </div>
-        </div>`}
-      <p class="small muted" style="margin-top:24px">Your word bank is saved on this device, in this browser.</p>`;
+          ${tab === 'words'
+            ? `<div class="bank-grid">${list.map(bankCard).join('') || '<p class="muted">No words match.</p>'}</div>`
+            : `<ol class="nb-lines">${list.map(sentenceLine).join('') || '<p class="muted">No sentences match.</p>'}</ol>`}`
+        : `<div class="empty">
+            <div class="big" aria-hidden="true">${tab === 'words' ? '🌱' : '✍️'}</div>
+            <h2>${tab === 'words' ? 'Your word bank is empty' : 'No sentences yet'}</h2>
+            <p class="muted">${tab === 'words'
+              ? 'Add a word above, or tap <strong>☆ Add to notebook</strong> on any word card.'
+              : 'Write one above, or save sentences from Alan Peat Sentences, Figurative Language and Level Up!'}</p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+              ${tab === 'words'
+                ? '<a class="btn" href="#/grammar">✏️ Glorious Grammar</a><a class="btn" href="#/vocab">📖 Vivid Vocabulary</a>'
+                : '<a class="btn" href="#/peat">🧱 Alan Peat Sentences</a><a class="btn" href="#/figurative">🎨 Figurative Language</a><a class="btn" href="#/levelup">⚡ Level Up!</a>'}
+            </div>
+          </div>`}
+      </div>
+      <p class="small muted no-print" style="margin-top:24px">Your notebook is saved on this device, in this browser.
+        ${items.length ? `<button class="linkish" id="nb-clear">Empty the ${tab === 'words' ? 'word bank' : 'sentences page'}</button>` : ''}</p>`;
 
-    $$('[data-f]').forEach((b) => { b.onclick = () => { bankFilter = b.dataset.f; renderBank(); }; });
-    const s = $('#bank-search');
-    if (s) s.oninput = () => {
-      bankSearch = s.value;
-      const pos = s.selectionStart;
-      renderBank();
-      const s2 = $('#bank-search'); s2.focus(); s2.setSelectionRange(pos, pos);
-    };
-    const p = $('#print-bank'); if (p) p.onclick = () => window.print();
-    const c = $('#clear-bank');
-    if (c) c.onclick = () => {
-      if (confirm('Remove every word from your word bank? This can’t be undone.')) { store.set('bank', []); updateCount(); renderBank(); }
-    };
-    $$('[data-remove]').forEach((b) => {
-      b.onclick = () => {
-        const [w, cl] = JSON.parse(b.dataset.remove);
+    app.onclick = (ev) => {
+      const say = ev.target.closest('[data-say]');
+      if (say) { speak(say.dataset.say); return; }
+      const rm = ev.target.closest('[data-remove]');
+      if (rm) {
+        const [w, cl] = JSON.parse(rm.dataset.remove);
+        if (tab === 'sentences' && !confirm('Remove this sentence from your notebook?')) return;
         bank.remove(w, cl);
-        toast(`Removed “${w}”`);
-        renderBank();
+        toast(tab === 'words' ? `Removed “${w}”` : 'Sentence removed');
+        renderNotebook(tab);
+      }
+    };
+    $$('[data-f]').forEach((b) => { b.onclick = () => { nbFilter[tab] = b.dataset.f; renderNotebook(tab); }; });
+    const s = $('#nb-search');
+    if (s) s.oninput = () => {
+      nbSearch[tab] = s.value;
+      const pos = s.selectionStart;
+      renderNotebook(tab);
+      const s2 = $('#nb-search'); s2.focus(); s2.setSelectionRange(pos, pos);
+    };
+    const pr = $('#nb-print'); if (pr) pr.onclick = () => window.print();
+    const cp = $('#nb-copy');
+    if (cp) cp.onclick = () => copyText(tab === 'words'
+      ? list.map((e) => `${e.word} (${(e.sub || clsInfo(e.cls).label).toLowerCase()})${e.definition ? ` – ${e.definition}` : ''}`).join('\n')
+      : list.map((e) => `• ${e.word}`).join('\n'));
+    const clr = $('#nb-clear');
+    if (clr) clr.onclick = () => {
+      if (!confirm(`Remove everything from your ${tab === 'words' ? 'word bank' : 'sentences page'}? This can’t be undone.`)) return;
+      store.set('bank', bank.all().filter((e) => (tab === 'words' ? isSentence(e) : !isSentence(e))));
+      updateCount();
+      renderNotebook(tab);
+    };
+
+    if (tab === 'words') {
+      const wIn = $('#nb-word');
+      const add = () => {
+        const w = wIn.value.trim().replace(/\s+/g, ' ');
+        if (!w) { toast('Type a word first!'); wIn.focus(); return; }
+        const tok = /\s/.test(w) ? null : window.Grammar.analyse(w).tokens[0];
+        const cls = tok && tok.cls !== 'other' ? tok.cls : 'other';
+        bank.add({ word: w, cls, kind: 'word', definition: $('#nb-meaning').value.trim(), example: '', sentence: '', synonyms: [], own: true });
+        toast(`⭐ “${w}” added to your word bank`);
+        renderNotebook('words');
+        $('#nb-word').focus();
       };
-    });
-    $$('[data-say]').forEach((b) => { b.onclick = () => speak(b.dataset.say); });
+      $('#nb-add-word').onclick = add;
+      [wIn, $('#nb-meaning')].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); }));
+    } else {
+      $('#nb-add-sentence').onclick = () => {
+        const v = $('#nb-sentence').value.trim().replace(/\s+/g, ' ');
+        if (!v) { toast('Write a sentence first!'); $('#nb-sentence').focus(); return; }
+        bank.add({ word: v, cls: 'own', kind: 'sentence', sub: 'My sentence', definition: '', example: '', sentence: '', synonyms: [] });
+        toast('✍️ Sentence added to your notebook');
+        renderNotebook('sentences');
+      };
+    }
+  }
+
+  function sentenceLine(e) {
+    const date = e.added ? new Date(e.added).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+    const src = SENTENCE_SOURCES[e.cls];
+    const label = e.sub || (src ? src.label : 'Sentence');
+    return `
+      <li class="nb-line c-${esc(e.cls)}">
+        <div class="nb-line-head">
+          <span class="nb-src">${esc(label)}</span>
+          <span class="date">${esc(date)}</span>
+        </div>
+        <p class="nb-text">${esc(e.word)}</p>
+        ${e.definition ? `<p class="nb-meta">💭 ${esc(e.definition)}</p>` : ''}
+        ${e.replaced ? `<p class="nb-meta">⚡ Before levelling up: “${esc(e.replaced)}”</p>` : ''}
+        <div class="nb-actions">
+          <button class="icon-btn" data-say="${esc(e.word)}" aria-label="Hear it">🔊</button>
+          <button class="icon-btn" data-remove='${esc(JSON.stringify([e.word, e.cls]))}' aria-label="Remove this sentence">🗑️</button>
+        </div>
+      </li>`;
   }
 
   function bankCard(e) {
@@ -2090,13 +2201,27 @@
         ${e.synonyms && e.synonyms.length ? `<p class="syn"><strong>Synonyms:</strong> ${esc(e.synonyms.join(', '))}</p>` : ''}
         <div class="row">
           <button class="btn small" data-say="${esc(e.word)}">🔊 Hear it</button>
-          ${!['propernoun', 'figurative', 'peat'].includes(e.cls) ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
+          ${e.cls !== 'propernoun' ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
           <button class="btn small ghost" data-remove='${esc(JSON.stringify([e.word, e.cls]))}' aria-label="Remove ${esc(e.word)}">🗑️</button>
         </div>
       </article>`;
   }
 
+  // sentences saved in the old Alan Peat collection move into the notebook
+  function migratePeat() {
+    const old = store.get('peat', null);
+    if (!old || !Object.keys(old).length || !window.Peat) return;
+    Object.keys(old).forEach((id) => {
+      const t = window.Peat.TYPES.find((x) => x.id === id);
+      (old[id] || []).slice().reverse().forEach((m) => {
+        bank.add({ word: m.text, cls: 'peat', kind: 'sentence', sub: t ? t.name : 'Alan Peat sentence', peatId: id, definition: '', example: '', sentence: '', synonyms: [], added: m.added });
+      });
+    });
+    store.set('peat', {});
+  }
+
   // ------------------------------------------------------------ start
+  migratePeat();
   updateCount();
   applyFont();
   route();
