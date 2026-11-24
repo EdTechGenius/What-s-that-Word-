@@ -62,6 +62,21 @@ const LU = require('../js/levelup.js');
   console.log('Level Up checks passed.');
 }
 
+// Figurative Language Corner content and checks
+const F = require('../js/figurative.js');
+assert.strictEqual(F.DEVICES.length, 11);
+F.DEVICES.forEach((d) => d.examples.forEach((e) => {
+  assert.ok(/\[\[.+?\]\]/.test(e.t), `${d.id}: example has a highlighted part`);
+  assert.ok(e.m && e.u, `${d.id}: example has a meaning and a use`);
+  e.tags.forEach((t) => assert.ok(F.THEMES[t], `known theme ${t}`));
+}));
+assert.ok(F.check('simile', 'as brave as a lion').ok);
+assert.ok(!F.check('simile', 'The lion was brave').ok);
+assert.ok(F.check('alliteration', 'Seven silly snakes').ok);
+assert.ok(F.check('onomatopoeia', 'The bacon sizzled').ok);
+assert.strictEqual(F.check('idiom', 'anything'), null);
+console.log('Figurative language checks passed.');
+
 // word parts (with a tiny pretend dictionary)
 const WP = require('../js/wordparts.js');
 const known = new Set(['petrify', 'happy', 'unhappy', 'hope', 'port', 'transport', 'comfortable']);

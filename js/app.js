@@ -56,7 +56,8 @@
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const clsInfo = (cls) => CLASSES[cls] || CLASSES.other;
+  const FIG_INFO = { label: 'Figurative language', short: 'Fig', emoji: '🎨', kid: '' };
+  const clsInfo = (cls) => (cls === 'figurative' ? FIG_INFO : CLASSES[cls] || CLASSES.other);
   const badge = (cls, text) => `<span class="badge c-${esc(cls)}"><span class="swatch"></span>${esc(text || clsInfo(cls).label)}</span>`;
 
   let toastTimer;
@@ -140,6 +141,7 @@
   // ------------------------------------------------------------ router
   function route() {
     closeModal();
+    app.onclick = null;
     const parts = location.hash.replace(/^#\/?/, '').split('/');
     const page = parts[0] || '';
     const arg = parts.slice(1).join('/');
@@ -148,6 +150,7 @@
     if (page === 'grammar') renderGrammar();
     else if (page === 'vocab') renderVocab(decodeURIComponent(arg || ''));
     else if (page === 'levelup') renderLevelUp();
+    else if (page === 'figurative') renderFigurative(decodeURIComponent(arg || ''));
     else if (page === 'bank') renderBank();
     else renderHome();
     applyFont();
@@ -198,6 +201,13 @@
           <div class="sample" aria-hidden="true"><span class="lu-demo-old">said</span> → <span class="lu-demo-new">bellowed</span></div>
           <p>Type your writing and swap plain words for ambitious and challenge words. Watch your writing level up!</p>
           <span class="go">Level up my writing →</span>
+        </a>
+        <a class="corner figurative" href="#/figurative">
+          <span class="corner-icon" aria-hidden="true">🎨</span>
+          <h2>Figurative Language Corner</h2>
+          <div class="sample" aria-hidden="true"><span class="fig-demo">as quiet as a mouse</span><span class="fig-demo">Crash!</span></div>
+          <p>Similes, metaphors, personification and more, each with examples, what they mean and when to use them.</p>
+          <span class="go">Explore techniques →</span>
         </a>
         <a class="corner bank" href="#/bank">
           <span class="corner-icon" aria-hidden="true">⭐</span>
@@ -1596,13 +1606,214 @@
     if (rm) rm.onclick = () => { delete lu.adds[kind][s]; closeModal(); renderLevelUp(); };
   }
 
+  // ================================================================ FIGURATIVE
+  let figTheme = '';
+  let figSearch = '';
+  const figPrompt = {};
+
+  function figDevice(id) { return window.Figurative.DEVICES.find((d) => d.id === id); }
+  const figStyle = (d) => `--dc:${d.colour};--ds:${d.soft}`;
+
+  function figExampleHtml(d, e, showDevice) {
+    const F = window.Figurative;
+    const text = F.parts(e.t).map((p) => (p.mark ? `<mark>${esc(p.text)}</mark>` : esc(p.text))).join('');
+    const plainText = F.plain(e.t);
+    const entry = { word: plainText, cls: 'figurative', sub: d.name, definition: e.m, example: '', sentence: '', synonyms: [] };
+    return `
+      <article class="fig-ex" style="${figStyle(d)}">
+        ${showDevice ? `<a class="fig-dev-tag" href="#/figurative/${d.id}">${d.emoji} ${esc(d.name)}</a>` : ''}
+        <p class="fig-text">${text}</p>
+        ${e.x ? `<p class="fig-x">${d.id === 'imagery' ? 'Sense' : 'Sound'}: <strong>${esc(e.x)}</strong></p>` : ''}
+        <dl class="fig-info">
+          <dt>💭 What it means</dt><dd>${esc(e.m)}</dd>
+          <dt>✍️ Use it when…</dt><dd>${esc(e.u)}</dd>
+        </dl>
+        <div class="fig-foot">
+          <div class="fig-tags">${e.tags.map((t) => `<button class="fig-tag" data-theme="${t}">${esc(F.THEMES[t])}</button>`).join('')}</div>
+          <div class="fig-actions">
+            <button class="icon-btn" data-say="${esc(plainText)}" aria-label="Hear it">🔊</button>
+            ${bankButton(entry, { small: true })}
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function figMatches(e) {
+    const q = figSearch.trim().toLowerCase();
+    return (!figTheme || e.tags.includes(figTheme)) &&
+      (!q || window.Figurative.plain(e.t).toLowerCase().includes(q) || e.m.toLowerCase().includes(q) || e.u.toLowerCase().includes(q));
+  }
+
+  function themeChips(themes) {
+    const F = window.Figurative;
+    return `<button class="chip ${!figTheme ? 'on' : ''}" data-theme="">All themes</button>` +
+      themes.map((t) => `<button class="chip ${figTheme === t ? 'on' : ''}" data-theme="${t}">${esc(F.THEMES[t])}</button>`).join('');
+  }
+
+  function renderFigurative(arg) {
+    document.title = 'Figurative Language Corner · What’s That Word?';
+    const d = arg && figDevice(arg);
+    if (d) renderFigDevice(d); else renderFigHome();
+  }
+
+  function wireFigCommon(rerender) {
+    app.onclick = (ev) => {
+      const th = ev.target.closest('[data-theme]');
+      if (th) { figTheme = figTheme === th.dataset.theme && th.classList.contains('fig-tag') ? '' : th.dataset.theme; rerender(); return; }
+      const say = ev.target.closest('[data-say]');
+      if (say) speak(say.dataset.say);
+    };
+  }
+
+  function renderFigHome() {
+    const F = window.Figurative;
+    const filtering = figTheme || figSearch.trim();
+    let results = '';
+    if (filtering) {
+      const groups = F.DEVICES.map((d) => ({ d, list: d.examples.filter(figMatches) })).filter((g) => g.list.length);
+      const n = groups.reduce((a, g) => a + g.list.length, 0);
+      results = `
+        <div class="fig-results-head">
+          <h2>${n} example${n === 1 ? '' : 's'}${figTheme ? ` for ${esc(F.THEMES[figTheme])}` : ''}${figSearch.trim() ? ` matching “${esc(figSearch.trim())}”` : ''}</h2>
+          <button class="btn small" id="fig-clear">✕ Show all techniques</button>
+        </div>
+        ${groups.map((g) => `
+          <section class="fig-group">
+            <h3><a href="#/figurative/${g.d.id}" style="color:${g.d.colour}">${g.d.emoji} ${esc(g.d.name)}</a> <span class="muted small">– ${esc(g.d.short)}</span></h3>
+            <div class="fig-grid">${g.list.map((e) => figExampleHtml(g.d, e)).join('')}</div>
+          </section>`).join('') || '<p class="muted">No examples match. Try another theme or word.</p>'}`;
+    }
+    app.innerHTML = `
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">🎨 Corner 4</p>
+          <h1>Figurative <em>Language</em> Corner</h1>
+        </div>
+      </div>
+      <p class="lead">Figurative language means using words in a creative, imaginative way, not just for their everyday meaning. Explore 11 techniques, each with examples you can use in your own writing.</p>
+      <section class="card fig-finder">
+        <h2>✍️ What are you writing about?</h2>
+        <p class="muted small" style="margin-top:0">Choose a theme to see examples of every technique that would fit your writing.</p>
+        <div class="chips">${themeChips(Object.keys(F.THEMES))}</div>
+        <input type="search" id="fig-search" placeholder="🔎 Search the examples, e.g. moon, rain, dragon…" value="${esc(figSearch)}" aria-label="Search the examples">
+      </section>
+      ${filtering ? results : `
+        <div class="fig-devices">
+          ${F.DEVICES.map((d) => `
+            <a class="fig-device" href="#/figurative/${d.id}" style="${figStyle(d)}">
+              <span class="fig-emoji" aria-hidden="true">${d.emoji}</span>
+              <strong>${esc(d.name)}</strong>
+              <span class="fig-short">${esc(d.short)}</span>
+              <span class="fig-eg">“${esc(F.plain(d.examples[0].t))}”</span>
+              <span class="go">${d.examples.length} examples →</span>
+            </a>`).join('')}
+        </div>`}`;
+    wireFigCommon(renderFigHome);
+    const s = $('#fig-search');
+    s.oninput = () => {
+      figSearch = s.value;
+      const pos = s.selectionStart;
+      renderFigHome();
+      const s2 = $('#fig-search'); s2.focus(); s2.setSelectionRange(pos, pos);
+    };
+    const clear = $('#fig-clear');
+    if (clear) clear.onclick = () => { figTheme = ''; figSearch = ''; renderFigHome(); };
+  }
+
+  function renderFigDevice(d) {
+    const F = window.Figurative;
+    const idx = F.DEVICES.indexOf(d);
+    const prev = F.DEVICES[(idx - 1 + F.DEVICES.length) % F.DEVICES.length];
+    const next = F.DEVICES[(idx + 1) % F.DEVICES.length];
+    const themes = Object.keys(F.THEMES).filter((t) => d.examples.some((e) => e.tags.includes(t)));
+    if (figTheme && !themes.includes(figTheme)) figTheme = '';
+    const list = d.examples.filter((e) => !figTheme || e.tags.includes(figTheme));
+    if (figPrompt[d.id] == null) figPrompt[d.id] = 0;
+    const prompt = d.prompts[figPrompt[d.id] % d.prompts.length];
+    const canCheck = F.check(d.id, 'test') !== null;
+    document.title = `${d.name} · Figurative Language Corner`;
+
+    app.innerHTML = `
+      <nav class="fig-nav" aria-label="Techniques">
+        <a class="fig-back" href="#/figurative">← All techniques</a>
+        <div class="fig-pills">${F.DEVICES.map((x) => `<a class="fig-pill ${x === d ? 'on' : ''}" href="#/figurative/${x.id}" style="${figStyle(x)}">${x.emoji} ${esc(x.name)}</a>`).join('')}</div>
+      </nav>
+      <div class="fig-hero" style="${figStyle(d)}">
+        <span class="fig-emoji big" aria-hidden="true">${d.emoji}</span>
+        <div>
+          <p class="eyebrow" style="color:${d.colour}">🎨 Figurative Language Corner</p>
+          <h1>${esc(d.name)}</h1>
+          <p class="fig-short">${esc(d.short)}</p>
+        </div>
+        <button class="btn small" id="fig-hear-def">🔊 Hear it</button>
+      </div>
+      <div class="fig-learn">
+        <section class="card fig-what" style="${figStyle(d)}">
+          <h2>📘 What is it?</h2>
+          <p>${d.what}</p>
+          <h3>🔍 How to spot it</h3>
+          <p>${esc(d.spot)}</p>
+          <h3>🛠️ How to write your own</h3>
+          <ul>${d.recipe.map((r) => `<li>${r}</li>`).join('')}</ul>
+          <h3>💡 Why writers use it</h3>
+          <p>${esc(d.why)}</p>
+        </section>
+        <section class="card fig-try" style="${figStyle(d)}">
+          <h2>✍️ Try it yourself</h2>
+          <p class="fig-prompt"><strong>Challenge:</strong> <span id="fig-prompt-text">${esc(prompt)}</span>
+            <button class="btn small ghost" id="fig-new-prompt">🔄 New idea</button></p>
+          <textarea id="fig-own" rows="3" placeholder="Write your own ${esc(d.name.toLowerCase())} here…" spellcheck="true"></textarea>
+          <div class="input-actions">
+            ${canCheck ? '<button class="btn primary" id="fig-check">✅ Check it</button>' : ''}
+            <button class="btn" id="fig-hear-own">🔊 Hear it</button>
+            <button class="btn" id="fig-save-own">☆ Save to word bank</button>
+          </div>
+          <div id="fig-feedback" aria-live="polite">${canCheck ? '' : `<p class="small muted">Read it aloud to a partner. Can they spot the ${esc(d.name.toLowerCase())}?</p>`}</div>
+        </section>
+      </div>
+      <div class="fig-results-head">
+        <h2>📚 ${list.length} example${list.length === 1 ? '' : 's'}${figTheme ? ` for ${esc(F.THEMES[figTheme])}` : ''}</h2>
+      </div>
+      <div class="chips fig-theme-row">${themeChips(themes)}</div>
+      <div class="fig-grid">${list.map((e) => figExampleHtml(d, e)).join('')}</div>
+      <nav class="fig-prevnext">
+        <a class="btn" href="#/figurative/${prev.id}">← ${prev.emoji} ${esc(prev.name)}</a>
+        <a class="btn" href="#/figurative/${next.id}">${next.emoji} ${esc(next.name)} →</a>
+      </nav>`;
+
+    wireFigCommon(() => renderFigDevice(d));
+    $('#fig-hear-def').onclick = () => speak(`${d.name}. ${$('.fig-what p').textContent}`);
+    $('#fig-new-prompt').onclick = () => {
+      figPrompt[d.id] = (figPrompt[d.id] + 1) % d.prompts.length;
+      $('#fig-prompt-text').textContent = d.prompts[figPrompt[d.id]];
+    };
+    const own = $('#fig-own');
+    const fb = $('#fig-feedback');
+    const chk = $('#fig-check');
+    if (chk) {
+      chk.onclick = () => {
+        const v = own.value.trim();
+        if (!v) { toast('Write your own example first!'); own.focus(); return; }
+        const r = F.check(d.id, v);
+        fb.innerHTML = `<div class="feedback ${r.ok ? 'good' : 'try'}">${r.ok ? '🎉' : '🤔'} ${esc(r.message)}</div>`;
+      };
+    }
+    $('#fig-hear-own').onclick = () => { if (own.value.trim()) speak(own.value.trim()); else toast('Write your own example first!'); };
+    $('#fig-save-own').onclick = () => {
+      const v = own.value.trim();
+      if (!v) { toast('Write your own example first!'); own.focus(); return; }
+      bank.add({ word: v, cls: 'figurative', sub: `${d.name} (my own)`, definition: '', example: '', sentence: '', synonyms: [] });
+      toast('⭐ Your example has been saved to your word bank');
+    };
+  }
+
   // ================================================================ BANK
   let bankFilter = '';
   let bankSearch = '';
   function renderBank() {
     document.title = 'My Word Bank · What’s That Word?';
     const all = bank.all();
-    const classes = ORDER.filter((c) => all.some((e) => e.cls === c));
+    const classes = ORDER.concat(['figurative']).filter((c) => all.some((e) => e.cls === c));
     const list = all.filter((e) => (!bankFilter || e.cls === bankFilter) &&
       (!bankSearch || e.word.toLowerCase().includes(bankSearch.toLowerCase())));
 
@@ -1622,7 +1833,7 @@
           <input type="search" id="bank-search" placeholder="Find a word…" value="${esc(bankSearch)}" aria-label="Find a word in my word bank">
           <div class="chips">
             <button class="chip ${!bankFilter ? 'c-other' : ''}" data-f="" style="${!bankFilter ? 'border-color:var(--ink)' : ''}">All (${all.length})</button>
-            ${classes.map((c) => `<button class="chip" data-f="${c}" style="${bankFilter === c ? `background:var(--${c});border-color:var(--${c}-line)` : ''}"><span class="swatch c-${c}"></span>${esc(CLASSES[c].label)}s</button>`).join('')}
+            ${classes.map((c) => `<button class="chip" data-f="${c}" style="${bankFilter === c ? `background:var(--${c});border-color:var(--${c}-line)` : ''}"><span class="swatch c-${c}"></span>${esc(c === 'figurative' ? 'Figurative language' : clsInfo(c).label + 's')}</button>`).join('')}
           </div>
         </div>
         <div class="bank-grid">${list.map(bankCard).join('') || '<p class="muted">No words match.</p>'}</div>` : `
@@ -1669,14 +1880,14 @@
           ${badge(e.cls, e.sub ? cap(e.sub) : clsInfo(e.cls).label)}
           <span class="date">${esc(date)}</span>
         </div>
-        <h3>${esc(e.word)}</h3>
+        <h3 class="${e.word.length > 24 ? 'long' : ''}">${esc(e.word)}</h3>
         ${e.definition ? `<p class="def">${esc(e.definition)}</p>` : ''}
         ${e.sentence ? `<p class="ctx">“${highlightInSentence(e.sentence, e.word, e.cls)}”</p>` : e.example ? `<p class="ctx">“${esc(e.example)}”</p>` : ''}
         ${e.replaced ? `<p class="syn"><strong>⚡ Levelled up from:</strong> ${esc(e.replaced)}</p>` : ''}
         ${e.synonyms && e.synonyms.length ? `<p class="syn"><strong>Synonyms:</strong> ${esc(e.synonyms.join(', '))}</p>` : ''}
         <div class="row">
           <button class="btn small" data-say="${esc(e.word)}">🔊 Hear it</button>
-          ${e.cls !== 'propernoun' ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
+          ${e.cls !== 'propernoun' && e.cls !== 'figurative' ? `<a class="btn small" href="#/vocab/${encodeURIComponent(e.word)}">📖 Look up</a>` : ''}
           <button class="btn small ghost" data-remove='${esc(JSON.stringify([e.word, e.cls]))}' aria-label="Remove ${esc(e.word)}">🗑️</button>
         </div>
       </article>`;

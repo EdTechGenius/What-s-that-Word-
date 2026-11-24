@@ -58,6 +58,14 @@ Level Up! has **four ways to level up**, as tabs:
 Each tab shows how many upgrades have been made. Every upgrade can be tapped again to change or remove it.
 * Swapped words are highlighted, with stars to show progress and a **Before / After** comparison. Pupils can hear, copy, undo, or save their new words to the word bank.
 
+### 🎨 Figurative Language Corner
+Eleven techniques: **simile, metaphor, personification, alliteration, onomatopoeia, hyperbole, idioms, pathetic fallacy, oxymoron, assonance and imagery**, with 129 original examples.
+* Each technique has its own page with **What is it?**, **How to spot it**, **How to write your own** and **Why writers use it**.
+* Every example has the technique highlighted, **💭 what it means** and **✍️ when to use it**, plus 🔊 read aloud and ⭐ save to word bank. Assonance examples name the vowel sound, and imagery examples name the sense.
+* **What are you writing about?** Pick a theme (weather, sea, spooky, battles, happy, sad, winter…) or search, and see suitable examples from every technique at once.
+* **Try it yourself:** a writing challenge for each technique. Similes, metaphors, alliteration and onomatopoeia are checked automatically. Pupils can save their own examples to the word bank.
+* All the examples are in `js/figurative.js`, so teachers can add their own.
+
 ### ⭐ My Word Bank
 * Words saved from either corner, with their word class, meaning, the sentence they came from, and synonyms.
 * Pupils can filter by word class, search, hear a word, look it up again, remove words and print the bank.
@@ -86,6 +94,7 @@ and open http://localhost:8000.
 | `js/grammar.js` | Tags each word with [compromise](https://github.com/spencermountain/compromise) (MIT licence, bundled in `vendor/`), then applies primary-school grammar conventions (e.g. *their helmets* → determiner, *eighty men* → determiner, *lining up* → adverb) and writes the "why" explanations. This runs on the device, so colouring works offline. |
 | `js/lookup.js` | Gets definitions from the [Free Dictionary API](https://dictionaryapi.dev) (Wiktionary data) and synonyms from [Datamuse](https://www.datamuse.com/api/). Example sentences also come from [Wiktionary](https://en.wiktionary.org). All are free and need no API key. **They need an internet connection.** |
 | `js/levelup.js` | The plain-word lists and upgrade suggestions for Level Up!, and the rules for spotting them. |
+| `js/figurative.js` | All the Figurative Language Corner content (definitions, examples, themes) and the "Try it yourself" checks. |
 | `js/wordparts.js` | Splits words into prefixes, roots and suffixes for the Word detective. |
 | `js/app.js` | The pages, word cards, read-aloud and word bank. |
 | `sw.js` | Lets the app open offline and remembers words that were looked up before. |
